@@ -125,12 +125,32 @@ public class Inquisitor {
             heading = "Exam";
         }
 
-        // Initialize output LaTeX file with seed prefix
+        // Create output folder name by concatenating HEADING and SEED with an underscore
+        String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
+        String outputFolderName = (seed != null) ? sanitizedHeading + "_" + seed : sanitizedHeading + "_default";
+        Path outputFolderPath = Paths.get(outputFolderName);
+
+        // Create the output folder if it doesn't exist
+        if (!Files.exists(outputFolderPath)) {
+            try {
+                Files.createDirectories(outputFolderPath);
+                System.out.println("Created output directory: " + outputFolderName);
+            } catch (IOException e) {
+                System.out.println("Error creating output directory: " + outputFolderName);
+                e.printStackTrace();
+                return;
+            }
+        }
+
+        // Initialize output filenames with seed prefix
         String seedPrefix = (seed != null) ? String.valueOf(seed) : "default";
         String outputFileName = seedPrefix + "_all_exams.tex";
         String csvFileName = seedPrefix + "_results.csv";
+        String answersKeyFileName = seedPrefix + "_answers_key.txt";
 
-        Path outputFilePath = Paths.get(outputFileName);
+        Path outputFilePath = outputFolderPath.resolve(outputFileName);
+        Path csvFilePath = outputFolderPath.resolve(csvFileName);
+        Path answersKeyFilePath = outputFolderPath.resolve(answersKeyFileName);
 
         // Start writing the LaTeX file
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath.toString()))) {
@@ -185,6 +205,15 @@ public class Inquisitor {
                 examDataList.add(ed);
             }
 
+            // Check if any exams were generated
+            if (examDataList.isEmpty()) {
+                System.out.println("No exams were generated. Exiting.");
+                return;
+            }
+
+            // Determine T (number of questions) based on the first exam
+            int T = examDataList.get(0).correctAnswers.size();
+
             // Write all exams into the single LaTeX file
             int examNumber = 1;
             for (ExamData ed : examDataList) {
@@ -211,12 +240,12 @@ public class Inquisitor {
                 writer.newLine();
                 writer.newLine();
 
-                int questionNumber = 1;
+                int questionNumberLocal = 1;
                 for (String questionTex : ed.correctAnswers) {
                     writer.write(questionTex);
                     writer.newLine();
                     writer.newLine();
-                    questionNumber++;
+                    questionNumberLocal++;
                 }
 
                 writer.write("\\end{multicols}");
@@ -228,14 +257,18 @@ public class Inquisitor {
             writer.write("\\end{document}");
             writer.newLine();
 
-            System.out.println("Generated " + outputFileName + " successfully.");
+            System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
 
-            // Write results.csv with seed prefix
-            writeResultsCSV(examDataList, csvFileName);
-            System.out.println("Generated " + csvFileName + " successfully.");
+            // Write results.csv with new columns
+            writeResultsCSV(examDataList, csvFilePath.toString(), T);
+            System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
+
+            // Write answers_key.txt with seed prefix
+            writeAnswersKey(examDataList, answersKeyFilePath.toString());
+            System.out.println("Generated " + answersKeyFilePath.getFileName() + " successfully.");
 
         } catch (IOException e) {
-            System.out.println("Error writing to " + outputFileName);
+            System.out.println("Error writing to " + outputFilePath.getFileName());
             e.printStackTrace();
         }
     }
@@ -328,26 +361,24 @@ public class Inquisitor {
     }
 
     /**
-     * Writes the results.csv file compatible with Google Sheets.
+     * Writes the results.csv file compatible with Google Sheets, including new columns.
      *
      * @param examDataList List of ExamData containing exam details.
      * @param csvFileName  Name of the CSV file to create.
+     * @param T            Number of questions per exam.
      * @throws IOException If an I/O error occurs.
      */
-    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName) throws IOException {
+    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T) throws IOException {
         if (examDataList.isEmpty()) {
             System.out.println("No exams to write to CSV.");
             return;
         }
 
-        // Determine T from the first exam
-        int T = examDataList.get(0).correctAnswers.size();
-
         // Open CSV file for writing
         try (BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFileName))) {
-            // Write header
+            // Write header with new columns: "Surname", "Name", "Student ID"
             StringBuilder header = new StringBuilder();
-            header.append("Exam Number,Seed");
+            header.append("Surname,Name,Student ID,Exam Number,Seed");
             for (int i = 1; i <= T; i++) {
                 header.append(",Answer").append(i);
             }
@@ -361,7 +392,8 @@ public class Inquisitor {
             // For each exam, write a row
             for (ExamData ed : examDataList) {
                 StringBuilder row = new StringBuilder();
-                row.append(ed.examNumber).append(",").append(ed.seed).append(","); // Append comma after seed
+                row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
+                row.append(ed.examNumber).append(",").append(ed.seed).append(","); // Exam Number, Seed
 
                 // T empty answer cells
                 for (int i = 0; i < T; i++) {
@@ -371,11 +403,11 @@ public class Inquisitor {
                 // T formula cells
                 for (int i = 0; i < T; i++) {
                     // Determine column letters
-                    // Columns: A - Exam Number, B - Seed, C..(C+T-1) - Answer1..T
-                    // (C+T) to (C+2T-1) - Check1..T
+                    // Columns: A - Surname, B - Name, C - Student ID, D - Exam Number, E - Seed, F..(F+T-1) - Answer1..T
+                    // (F+T) to (F+2T-1) - Check1..T
 
                     // Compute the column letter for AnswerX
-                    int answerColNum = 3 + i; // A=1, B=2, C=3,...
+                    int answerColNum = 6 + i; // A=1, ..., F=6,...
                     String answerColLetter = getColumnLetter(answerColNum);
 
                     // The current row number is examNumber +1 (since row 1 is header)
@@ -383,9 +415,10 @@ public class Inquisitor {
 
                     // Correct answer is ed.correctAnswers.get(i)
                     String correctAnswer = ed.correctAnswers.get(i);
+                    correctAnswer = correctAnswer.replace("\"", "\"\""); // Escape double quotes
 
-                    // Use semicolons as argument separators in formulas
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctAnswer + ";\"Correct\"; IF(" + answerColLetter + rowIndex + "=\"\";\"Not Given\";\"Wrong\"))";
+                    // Use commas as argument separators in formulas for CSV compatibility
+                    String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctAnswer + ",\"Correct\", IF(" + answerColLetter + rowIndex + "=\"\",\"Not Given\",\"Wrong\"))";
 
                     // Append the formula directly without external quotes
                     row.append(formula);
@@ -397,20 +430,20 @@ public class Inquisitor {
                 }
 
                 // Compute the range for Check1 to CheckT
-                int checkStartColNum = 3 + T; // Check1 starts after T Answer columns
-                int checkEndColNum = 3 + 2 * T - 1; // CheckT ends at this column
+                int checkStartColNum = 6 + T; // Check1 starts after T Answer columns
+                int checkEndColNum = 6 + 2 * T - 1; // CheckT ends at this column
                 String checkStartColLetter = getColumnLetter(checkStartColNum);
                 String checkEndColLetter = getColumnLetter(checkEndColNum);
                 String range = checkStartColLetter + (ed.examNumber + 1) + ":" + checkEndColLetter + (ed.examNumber + 1);
 
                 // Correct count
-                String correctCountFormula = "=COUNTIF(" + range + ";\"Correct\")";
+                String correctCountFormula = "=COUNTIF(" + range + ",\"Correct\")";
 
                 // Wrong count
-                String wrongCountFormula = "=COUNTIF(" + range + ";\"Wrong\")";
+                String wrongCountFormula = "=COUNTIF(" + range + ",\"Wrong\")";
 
                 // Not Given count
-                String notGivenCountFormula = "=COUNTIF(" + range + ";\"Not Given\")";
+                String notGivenCountFormula = "=COUNTIF(" + range + ",\"Not Given\")";
 
                 // Append the summary formulas directly without external quotes
                 row.append(",").append(correctCountFormula);
@@ -420,6 +453,29 @@ public class Inquisitor {
                 // Write the row
                 csvWriter.write(row.toString());
                 csvWriter.newLine();
+            }
+        }
+    }
+
+    /**
+     * Writes the answers_key.txt file with a seed prefix.
+     *
+     * @param examDataList    List of ExamData containing exam details.
+     * @param answersKeyPath  Path to the answers_key.txt file.
+     * @throws IOException If an I/O error occurs.
+     */
+    private static void writeAnswersKey(List<ExamData> examDataList, String answersKeyPath) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(answersKeyPath))) {
+            for (ExamData ed : examDataList) {
+                writer.write("Exam " + ed.examNumber + " Seed: " + ed.seed);
+                writer.newLine();
+                int questionNum = 1;
+                for (String correctAnswer : ed.correctAnswers) {
+                    writer.write("Q" + questionNum + ": " + correctAnswer);
+                    writer.newLine();
+                    questionNum++;
+                }
+                writer.newLine();
             }
         }
     }
