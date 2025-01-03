@@ -8,12 +8,12 @@ public class Inquisitor {
     static class Question {
         String text;
         List<String> answers;
-        String correctAnswer; // To store the correct answer
+        int correctAnswerIndex; // Index of the correct answer in the shuffled answers list
 
-        Question(String text, List<String> answers, String correctAnswer) {
+        Question(String text, List<String> answers, int correctAnswerIndex) {
             this.text = text;
             this.answers = answers;
-            this.correctAnswer = correctAnswer;
+            this.correctAnswerIndex = correctAnswerIndex;
         }
     }
 
@@ -21,12 +21,14 @@ public class Inquisitor {
     static class ExamData {
         int examNumber;
         long seed;
-        List<String> correctAnswers;
+        List<Integer> correctAnswerIndices;
+        List<Question> questions; // List of questions for the exam
 
-        ExamData(int examNumber, long seed, List<String> correctAnswers) {
+        ExamData(int examNumber, long seed, List<Integer> correctAnswerIndices, List<Question> questions) {
             this.examNumber = examNumber;
             this.seed = seed;
-            this.correctAnswers = correctAnswers;
+            this.correctAnswerIndices = correctAnswerIndices;
+            this.questions = questions;
         }
     }
 
@@ -35,10 +37,11 @@ public class Inquisitor {
         List<String> argsList = new ArrayList<>(Arrays.asList(args));
         Long seed = null;
         Integer totalExams = null;
+        Integer totalStudents = null; // New argument for total students
         String heading = null;  // For the -h option
         String subheading = null; // For the -h2 option
 
-        // Parse for --seed or -s, --total_exams or -t, -h, and -h2
+        // Parse for --seed or -s, --total_exams or -t, --students or -st, -h, and -h2
         Iterator<String> iterator = argsList.iterator();
         while (iterator.hasNext()) {
             String arg = iterator.next();
@@ -76,6 +79,23 @@ public class Inquisitor {
                     System.out.println("Total exams value missing after " + arg);
                     return;
                 }
+            } else if (arg.equalsIgnoreCase("--students") || arg.equalsIgnoreCase("-st")) {
+                if (iterator.hasNext()) {
+                    String totalStudentsStr = iterator.next();
+                    try {
+                        totalStudents = Integer.parseInt(totalStudentsStr);
+                        if (totalStudents <= 0) {
+                            System.out.println("Total students must be a positive integer. Found: " + totalStudentsStr);
+                            return;
+                        }
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid total students value: " + totalStudentsStr);
+                        return;
+                    }
+                } else {
+                    System.out.println("Total students value missing after " + arg);
+                    return;
+                }
             } else if (arg.equalsIgnoreCase("-h")) {
                 if (iterator.hasNext()) {
                     heading = iterator.next();
@@ -100,6 +120,7 @@ public class Inquisitor {
             String arg = args[i];
             if (arg.equalsIgnoreCase("--seed") || arg.equalsIgnoreCase("-s") ||
                 arg.equalsIgnoreCase("--total_exams") || arg.equalsIgnoreCase("-t") ||
+                arg.equalsIgnoreCase("--students") || arg.equalsIgnoreCase("-st") ||
                 arg.equalsIgnoreCase("-h") || arg.equalsIgnoreCase("-h2")) {
                 i++; // Skip the next argument as it's the value for the flag
             } else {
@@ -109,8 +130,8 @@ public class Inquisitor {
 
         // Now, filteredArgs contains only the question selection arguments
         if (filteredArgs.size() == 0 || filteredArgs.size() % 2 != 0) {
-            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--seed <integer>] [--total_exams <integer>]");
-            System.out.println("Example: java Inquisitor 5 questions1.txt 10 questions2.txt -h \"Midterm Exam\" -h2 \"Calculus Section\" --seed 1000 --total_exams 3");
+            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--seed <integer>] [--total_exams <integer>] [--students <integer>]");
+            System.out.println("Example: java Inquisitor 5 questions1.txt 10 questions2.txt -h \"Midterm Exam\" -h2 \"Calculus Section\" --seed 1000 --total_exams 3 --students 30");
             return;
         }
 
@@ -127,7 +148,12 @@ public class Inquisitor {
 
         // Create output folder name by concatenating HEADING and SEED with an underscore
         String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
-        String outputFolderName = (seed != null) ? sanitizedHeading + "_" + seed : sanitizedHeading + "_default";
+        String outputFolderName;
+        if (seed != null) {
+            outputFolderName = sanitizedHeading + "_" + seed;
+        } else {
+            outputFolderName = sanitizedHeading + "_default";
+        }
         Path outputFolderPath = Paths.get(outputFolderName);
 
         // Create the output folder if it doesn't exist
@@ -151,6 +177,46 @@ public class Inquisitor {
         Path outputFilePath = outputFolderPath.resolve(outputFileName);
         Path csvFilePath = outputFolderPath.resolve(csvFileName);
         Path answersKeyFilePath = outputFolderPath.resolve(answersKeyFileName);
+
+        // Initialize a list to collect all ExamData
+        List<ExamData> examDataList = new ArrayList<>();
+
+        // Initialize a single Random instance with the provided seed
+        Random randomInstance;
+        if (seed != null) {
+            randomInstance = new Random(seed);
+        } else {
+            randomInstance = new Random(); // Use default seed
+        }
+
+        // Determine the total number of exams
+        int examsToGenerate = (totalExams != null) ? totalExams : 1;
+
+        // Generate all exams
+        for (int exam = 1; exam <= examsToGenerate; exam++) {
+            long currentSeed = (seed != null) ? seed : new Random().nextLong();
+            List<Question> selectedQuestions = generateExam(filteredArgs, currentSeed, exam, randomInstance);
+            if (selectedQuestions == null) {
+                System.out.println("Failed to generate Exam " + exam);
+                continue;
+            }
+            // Extract correct answer indices from selectedQuestions
+            List<Integer> correctAnswerIndices = new ArrayList<>();
+            for (Question q : selectedQuestions) {
+                correctAnswerIndices.add(q.correctAnswerIndex);
+            }
+            ExamData ed = new ExamData(exam, currentSeed, correctAnswerIndices, selectedQuestions); // Pass the questions list
+            examDataList.add(ed);
+        }
+
+        // Check if any exams were generated
+        if (examDataList.isEmpty()) {
+            System.out.println("No exams were generated. Exiting.");
+            return;
+        }
+
+        // Determine T (number of questions) based on the first exam
+        int T = examDataList.get(0).correctAnswerIndices.size();
 
         // Start writing the LaTeX file
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath.toString()))) {
@@ -179,53 +245,17 @@ public class Inquisitor {
             writer.newLine();
             writer.newLine();
 
-            // Initialize a list to collect all ExamData
-            List<ExamData> examDataList = new ArrayList<>();
-
-            // Initialize a single Random instance with the provided seed
-            Random random;
-            if (seed != null) {
-                random = new Random(seed);
-            } else {
-                random = new Random(); // Use default seed
-            }
-
-            // Determine the total number of exams
-            int examsToGenerate = (totalExams != null) ? totalExams : 1;
-
-            // Generate all exams
-            for (int exam = 1; exam <= examsToGenerate; exam++) {
-                long currentSeed = (seed != null) ? seed : new Random().nextLong();
-                List<String> correctAnswers = generateExam(filteredArgs, currentSeed, exam, random);
-                if (correctAnswers == null) {
-                    System.out.println("Failed to generate Exam " + exam);
-                    continue;
-                }
-                ExamData ed = new ExamData(exam, currentSeed, correctAnswers);
-                examDataList.add(ed);
-            }
-
-            // Check if any exams were generated
-            if (examDataList.isEmpty()) {
-                System.out.println("No exams were generated. Exiting.");
-                return;
-            }
-
-            // Determine T (number of questions) based on the first exam
-            int T = examDataList.get(0).correctAnswers.size();
-
-            // Write all exams into the single LaTeX file
-            int examNumber = 1;
+            // Write each exam into the LaTeX file
             for (ExamData ed : examDataList) {
                 // Insert a page break before each exam except the first one
-                if (examNumber > 1) {
+                if (ed.examNumber > 1) {
                     writer.write("\\newpage");
                     writer.newLine();
                     writer.newLine();
                 }
 
                 // Write heading for each exam
-                writer.write("\\section*{" + escapeLatex(heading) + " " + examNumber + "}");
+                writer.write("\\section*{" + escapeLatex(heading) + " " + ed.examNumber + "}");
                 writer.newLine();
                 writer.newLine();
 
@@ -240,18 +270,19 @@ public class Inquisitor {
                 writer.newLine();
                 writer.newLine();
 
-                int questionNumberLocal = 1;
-                for (String questionTex : ed.correctAnswers) {
+                // Generate LaTeX content for the current exam
+                List<String> latexQuestions = generateLatex(ed.questions);
+
+                // Write each question's LaTeX content
+                for (String questionTex : latexQuestions) {
                     writer.write(questionTex);
                     writer.newLine();
                     writer.newLine();
-                    questionNumberLocal++;
                 }
 
                 writer.write("\\end{multicols}");
                 writer.newLine();
                 writer.newLine();
-                examNumber++;
             }
 
             writer.write("\\end{document}");
@@ -260,12 +291,12 @@ public class Inquisitor {
             System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
 
             // Write results.csv with new columns
-            writeResultsCSV(examDataList, csvFilePath.toString(), T);
+            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents);
             System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
 
             // Write answers_key.txt with seed prefix
             writeAnswersKey(examDataList, answersKeyFilePath.toString());
-            System.out.println("Generated " + answersKeyFilePath.getFileName() + " successfully.");
+            System.out.println("Generated " + answersKeyFileName + " successfully.");
 
         } catch (IOException e) {
             System.out.println("Error writing to " + outputFilePath.getFileName());
@@ -274,17 +305,17 @@ public class Inquisitor {
     }
 
     /**
-     * Generates a single exam and returns a list of LaTeX-formatted question strings.
+     * Generates a list of selected Question objects for an exam.
      *
      * @param filteredArgs List of question selection arguments.
      * @param seed         Seed value for randomness.
      * @param examNumber   The current exam number.
      * @param random       Random instance for shuffling and selection.
-     * @return List of LaTeX-formatted questions.
+     * @return List of selected Question objects.
      */
-    private static List<String> generateExam(List<String> filteredArgs, long seed, int examNumber, Random random) {
+    private static List<Question> generateExam(List<String> filteredArgs, long seed, int examNumber, Random random) {
         String seedInfo = String.valueOf(seed);
-        System.out.println("Inquisitor: Generating Exam " + examNumber + " with seed: " + seed);
+        System.out.println("Inquisitor: Selecting questions for Exam " + examNumber + " with seed: " + seed);
 
         // List to hold all selected questions
         List<Question> selectedQuestions = new ArrayList<>();
@@ -306,6 +337,13 @@ public class Inquisitor {
             String filePath = filteredArgs.get(i + 1);
             List<Question> allQuestions = null;
 
+            // Check if the question file exists
+            File qaFile = new File(filePath);
+            if (!qaFile.exists()) {
+                System.out.println("Question file not found: " + filePath);
+                return null;
+            }
+
             try {
                 allQuestions = readQuestionsFromFile(filePath);
             } catch (IOException e) {
@@ -321,17 +359,38 @@ public class Inquisitor {
 
             // Randomly select numQuestions from allQuestions using the provided Random instance
             Collections.shuffle(allQuestions, random);
-            selectedQuestions.addAll(allQuestions.subList(0, numQuestions));
+            List<Question> selected = allQuestions.subList(0, numQuestions);
+
+            // Shuffle answers within each question and set correctAnswerIndex
+            for (Question q : selected) {
+                List<String> shuffledAnswers = new ArrayList<>(q.answers);
+                Collections.shuffle(shuffledAnswers, random);
+                String correctAnswerStr = q.answers.get(q.correctAnswerIndex);
+                int correctIndex = shuffledAnswers.indexOf(correctAnswerStr);
+                if (correctIndex == -1) {
+                    System.out.println("Error: Correct answer '" + correctAnswerStr + "' not found after shuffling for question: " + q.text);
+                    return null;
+                }
+                q.answers = shuffledAnswers;
+                q.correctAnswerIndex = correctIndex;
+            }
+
+            selectedQuestions.addAll(selected);
         }
 
-        // *** Removed Shuffling of Selected Questions ***
-        // Ensures that the questions remain in the order they were selected
-        // Collections.shuffle(selectedQuestions, random);
+        return selectedQuestions;
+    }
 
-        // Generate LaTeX-formatted questions
+    /**
+     * Generates LaTeX-formatted content from a list of Question objects.
+     *
+     * @param questions List of Question objects.
+     * @return List of LaTeX-formatted question strings.
+     */
+    private static List<String> generateLatex(List<Question> questions) {
         List<String> latexQuestions = new ArrayList<>();
         int questionNumber = 1;
-        for (Question q : selectedQuestions) {
+        for (Question q : questions) {
             StringBuilder questionTex = new StringBuilder();
 
             // Write question text with escaped LaTeX characters, preserving math mode
@@ -341,11 +400,8 @@ public class Inquisitor {
             // Begin enumerate environment with numerical labels
             questionTex.append("\\begin{enumerate}[label=\\arabic*.]\n");
 
-            // Shuffle answers for randomness within the question
-            List<String> shuffledAnswers = new ArrayList<>(q.answers);
-            Collections.shuffle(shuffledAnswers, random);
-
-            for (String answer : shuffledAnswers) {
+            // Use the already shuffled answers
+            for (String answer : q.answers) {
                 questionTex.append("\\item " + escapeLatex(answer) + "\n");
             }
 
@@ -356,19 +412,19 @@ public class Inquisitor {
 
             questionNumber++;
         }
-
         return latexQuestions;
     }
 
     /**
-     * Writes the results.csv file compatible with Google Sheets, including new columns.
+     * Writes the results.csv file compatible with Google Sheets, including new columns and empty rows for students.
      *
-     * @param examDataList List of ExamData containing exam details.
-     * @param csvFileName  Name of the CSV file to create.
-     * @param T            Number of questions per exam.
+     * @param examDataList  List of ExamData containing exam details.
+     * @param csvFileName   Name of the CSV file to create.
+     * @param T             Number of questions per exam.
+     * @param totalStudents Total number of students.
      * @throws IOException If an I/O error occurs.
      */
-    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T) throws IOException {
+    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T, Integer totalStudents) throws IOException {
         if (examDataList.isEmpty()) {
             System.out.println("No exams to write to CSV.");
             return;
@@ -380,22 +436,38 @@ public class Inquisitor {
             StringBuilder header = new StringBuilder();
             header.append("Surname,Name,Student ID,Exam Number,Seed");
             for (int i = 1; i <= T; i++) {
-                header.append(",Answer").append(i);
+                header.append(",A").append(i);
             }
             for (int i = 1; i <= T; i++) {
-                header.append(",Check").append(i);
+                header.append(",Q").append(i);
             }
             header.append(",Correct,Wrong,Not Given");
             csvWriter.write(header.toString());
             csvWriter.newLine();
 
-            // For each exam, write a row
+            // Calculate X = totalExams / totalStudents
+            // Assuming X is the number of empty rows to leave after each exam row
+            // Since X might be a fraction, we round it up to ensure at least one empty row
+            // However, if totalStudents is greater than totalExams, X will be less than 1, set to 1
+            // If totalExams is greater than totalStudents, X can be 0, set to 1
+            // This ensures that there is always at least one empty row per exam
+
+            int X = 1; // Default value
+            if (totalStudents != null && examDataList.size() > 0) {
+                double exactX = (double) examDataList.size() / totalStudents;
+                X = (int) Math.ceil(exactX);
+                if (X < 1) {
+                    X = 1;
+                }
+            }
+
+            // For each exam, write a row and then X empty rows
             for (ExamData ed : examDataList) {
                 StringBuilder row = new StringBuilder();
                 row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
                 row.append(ed.examNumber).append(",").append(ed.seed).append(","); // Exam Number, Seed
 
-                // T empty answer cells
+                // T empty answer cells (student will input their answers as indices, e.g., 1,2,3,4)
                 for (int i = 0; i < T; i++) {
                     row.append(",");
                 }
@@ -403,22 +475,22 @@ public class Inquisitor {
                 // T formula cells
                 for (int i = 0; i < T; i++) {
                     // Determine column letters
-                    // Columns: A - Surname, B - Name, C - Student ID, D - Exam Number, E - Seed, F..(F+T-1) - Answer1..T
-                    // (F+T) to (F+2T-1) - Check1..T
+                    // Columns: A - Surname, B - Name, C - Student ID, D - Exam Number, E - Seed, F..(F+T-1) - A1..AT
+                    // (F+T) to (F+2T-1) - Q1..QT
 
-                    // Compute the column letter for AnswerX
+                    // Compute the column letter for A<N> (F = 6)
                     int answerColNum = 6 + i; // A=1, ..., F=6,...
                     String answerColLetter = getColumnLetter(answerColNum);
 
                     // The current row number is examNumber +1 (since row 1 is header)
                     int rowIndex = ed.examNumber + 1;
 
-                    // Correct answer is ed.correctAnswers.get(i)
-                    String correctAnswer = ed.correctAnswers.get(i);
-                    correctAnswer = correctAnswer.replace("\"", "\"\""); // Escape double quotes
+                    // Correct answer index (1-based for Excel formulas)
+                    int correctIndex = ed.correctAnswerIndices.get(i) + 1;
 
-                    // Use commas as argument separators in formulas for CSV compatibility
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctAnswer + ",\"Correct\", IF(" + answerColLetter + rowIndex + "=\"\",\"Not Given\",\"Wrong\"))";
+                    // Formula to check if the student's answer matches the correct index
+                    // Using semicolons as argument separators for locale compatibility
+                    String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctIndex + ";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
 
                     // Append the formula directly without external quotes
                     row.append(formula);
@@ -429,39 +501,54 @@ public class Inquisitor {
                     }
                 }
 
-                // Compute the range for Check1 to CheckT
-                int checkStartColNum = 6 + T; // Check1 starts after T Answer columns
-                int checkEndColNum = 6 + 2 * T - 1; // CheckT ends at this column
+                // Compute the range for Q1 to QT
+                int checkStartColNum = 6 + T; // Q1 starts after T Answer columns
+                int checkEndColNum = 6 + 2 * T - 1; // QT ends at this column
                 String checkStartColLetter = getColumnLetter(checkStartColNum);
                 String checkEndColLetter = getColumnLetter(checkEndColNum);
                 String range = checkStartColLetter + (ed.examNumber + 1) + ":" + checkEndColLetter + (ed.examNumber + 1);
 
                 // Correct count
-                String correctCountFormula = "=COUNTIF(" + range + ",\"Correct\")";
+                // Using semicolons as argument separators
+                String correctCountFormula = "=COUNTIF(" + range + ";\"C\")";
 
                 // Wrong count
-                String wrongCountFormula = "=COUNTIF(" + range + ",\"Wrong\")";
+                String wrongCountFormula = "=COUNTIF(" + range + ";\"W\")";
 
                 // Not Given count
-                String notGivenCountFormula = "=COUNTIF(" + range + ",\"Not Given\")";
+                String notGivenCountFormula = "=COUNTIF(" + range + ";\"NA\")";
 
                 // Append the summary formulas directly without external quotes
                 row.append(",").append(correctCountFormula);
                 row.append(",").append(wrongCountFormula);
                 row.append(",").append(notGivenCountFormula);
 
-                // Write the row
+                // Write the exam row
                 csvWriter.write(row.toString());
                 csvWriter.newLine();
+
+                // Write X empty rows after each exam row
+                for (int i = 0; i < X; i++) {
+                    StringBuilder emptyRow = new StringBuilder();
+                    // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
+                    // So total columns = 5 + 2*T + 3 = 8 + 2*T
+                    int totalColumns = 8 + 2 * T;
+                    for (int j = 0; j < totalColumns - 1; j++) {
+                        emptyRow.append(",");
+                    }
+                    emptyRow.append(","); // Last column
+                    csvWriter.write(emptyRow.toString());
+                    csvWriter.newLine();
+                }
             }
         }
     }
 
     /**
-     * Writes the answers_key.txt file with a seed prefix.
+     * Writes the answers_key.txt file with seed prefix.
      *
-     * @param examDataList    List of ExamData containing exam details.
-     * @param answersKeyPath  Path to the answers_key.txt file.
+     * @param examDataList   List of ExamData containing exam details.
+     * @param answersKeyPath Path to the answers_key.txt file.
      * @throws IOException If an I/O error occurs.
      */
     private static void writeAnswersKey(List<ExamData> examDataList, String answersKeyPath) throws IOException {
@@ -470,89 +557,15 @@ public class Inquisitor {
                 writer.write("Exam " + ed.examNumber + " Seed: " + ed.seed);
                 writer.newLine();
                 int questionNum = 1;
-                for (String correctAnswer : ed.correctAnswers) {
-                    writer.write("Q" + questionNum + ": " + correctAnswer);
+                for (Integer correctIndex : ed.correctAnswerIndices) {
+                    // Directly use the number for the correct answer
+                    writer.write("Q" + questionNum + ": " + correctIndex);
                     writer.newLine();
                     questionNum++;
                 }
                 writer.newLine();
             }
         }
-    }
-
-    /**
-     * Converts a column number to its corresponding Excel/Google Sheets column letter.
-     *
-     * @param columnNumber The 1-based column number.
-     * @return The corresponding column letter (e.g., 1 -> A, 27 -> AA).
-     */
-    private static String getColumnLetter(int columnNumber) {
-        StringBuilder column = new StringBuilder();
-        while (columnNumber > 0) {
-            int rem = (columnNumber - 1) % 26;
-            column.append((char) (rem + 'A'));
-            columnNumber = (columnNumber - 1) / 26;
-        }
-        return column.reverse().toString();
-    }
-
-    /**
-     * Reads questions from a given file.
-     *
-     * @param filePath Path to the questions file.
-     * @return List of Question objects.
-     * @throws IOException If an I/O error occurs.
-     */
-    private static List<Question> readQuestionsFromFile(String filePath) throws IOException {
-        List<Question> questions = new ArrayList<>();
-        List<String> lines = Files.readAllLines(Paths.get(filePath));
-        Iterator<String> iterator = lines.iterator();
-
-        while (iterator.hasNext()) {
-            String line = iterator.next().trim();
-            if (line.startsWith("[Q]") && line.endsWith("[/Q]")) {
-                // Extract question text
-                String questionText = extractQuestionText(line);
-                List<String> answers = new ArrayList<>();
-                String correctAnswer = null;
-
-                // Read the next 4 lines as answers
-                for (int i = 0; i < 4; i++) {
-                    if (iterator.hasNext()) {
-                        String answerLine = iterator.next().trim();
-                        // Check if the answer is correct (starts with '*')
-                        if (i == 0 && answerLine.startsWith("*")) {
-                            correctAnswer = answerLine.substring(1).trim();
-                            answers.add(correctAnswer);
-                        } else {
-                            answers.add(answerLine);
-                        }
-                    } else {
-                        throw new IOException("Unexpected end of file while reading answers for question: " + questionText);
-                    }
-                }
-
-                if (correctAnswer == null) {
-                    throw new IOException("No correct answer found for question: " + questionText);
-                }
-
-                questions.add(new Question(questionText, answers, correctAnswer));
-            }
-        }
-
-        return questions;
-    }
-
-    /**
-     * Extracts the question text from a line.
-     *
-     * @param line Line containing the question.
-     * @return Extracted question text.
-     */
-    private static String extractQuestionText(String line) {
-        // Remove [Q] and [/Q]
-        line = line.substring(3, line.length() - 4).trim();
-        return escapeLatex(line);
     }
 
     /**
@@ -592,6 +605,11 @@ public class Inquisitor {
                 escaped.append(segment);
             }
         }
+        // Warn if dollars are unbalanced
+        int dollarCount = countChar(text, '$');
+        if (dollarCount % 2 != 0) {
+            System.out.println("Warning: Unbalanced '$' symbols in text: " + text);
+        }
         return escaped.toString();
     }
 
@@ -621,5 +639,111 @@ public class Inquisitor {
             }
         }
         return escaped.toString();
+    }
+
+    /**
+     * Counts the occurrences of a specific character in a string.
+     *
+     * @param text The input string.
+     * @param c    The character to count.
+     * @return The number of occurrences.
+     */
+    private static int countChar(String text, char c) {
+        int count = 0;
+        for (char current : text.toCharArray()) {
+            if (current == c) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Escapes double quotes for CSV formulas.
+     *
+     * @param text The input string.
+     * @return The escaped string.
+     */
+    private static String escapeCSV(String text) {
+        if (text.contains("\"")) {
+            text = text.replace("\"", "\"\"");
+        }
+        return text;
+    }
+
+    /**
+     * Reads questions from a given file.
+     *
+     * @param filePath Path to the questions file.
+     * @return List of Question objects.
+     * @throws IOException If an I/O error occurs.
+     */
+    private static List<Question> readQuestionsFromFile(String filePath) throws IOException {
+        List<Question> questions = new ArrayList<>();
+        List<String> lines = Files.readAllLines(Paths.get(filePath));
+        Iterator<String> iterator = lines.iterator();
+
+        while (iterator.hasNext()) {
+            String line = iterator.next().trim();
+            if (line.startsWith("[Q]") && line.endsWith("[/Q]")) {
+                // Extract question text
+                String questionText = extractQuestionText(line);
+                List<String> answers = new ArrayList<>();
+                String correctAnswerStr = null;
+
+                // Read the next 4 lines as answers
+                for (int i = 0; i < 4; i++) {
+                    if (iterator.hasNext()) {
+                        String answerLine = iterator.next().trim();
+                        // Check if the answer is correct (starts with '*')
+                        if (i == 0 && answerLine.startsWith("*")) {
+                            correctAnswerStr = answerLine.substring(1).trim();
+                            answers.add(correctAnswerStr);
+                        } else {
+                            answers.add(answerLine);
+                        }
+                    } else {
+                        throw new IOException("Unexpected end of file while reading answers for question: " + questionText);
+                    }
+                }
+
+                if (correctAnswerStr == null) {
+                    throw new IOException("No correct answer found for question: " + questionText);
+                }
+
+                // Initially, correctAnswerIndex is set to 0 (will be updated after shuffling)
+                questions.add(new Question(questionText, answers, 0));
+            }
+        }
+
+        return questions;
+    }
+
+    /**
+     * Extracts the question text from a line.
+     *
+     * @param line Line containing the question.
+     * @return Extracted question text.
+     */
+    private static String extractQuestionText(String line) {
+        // Remove [Q] and [/Q]
+        line = line.substring(3, line.length() - 4).trim();
+        return escapeLatex(line);
+    }
+
+    /**
+     * Converts a column number to its corresponding Excel/Google Sheets column letter.
+     *
+     * @param columnNumber The 1-based column number.
+     * @return The corresponding column letter (e.g., 1 -> A, 27 -> AA).
+     */
+    private static String getColumnLetter(int columnNumber) {
+        StringBuilder column = new StringBuilder();
+        while (columnNumber > 0) {
+            int rem = (columnNumber - 1) % 26;
+            column.append((char) (rem + 'A'));
+            columnNumber = (columnNumber - 1) / 26;
+        }
+        return column.reverse().toString();
     }
 }
