@@ -6,9 +6,12 @@ TOT_EXAMS=2
 TOT_STUDENTS=30
 HEADING="Calcoltori Elettronici 2025 06 20"
 HEADING2="(Corretta: 1, Errata: -0.5, N/A: 0)"
+# Directory where question files are located
+BASE_PATH="./questions"
 
 # Execute the Java program with proper variable expansion and quoting
 java Inquisitor \
+    --base_path "$BASE_PATH" \
     1 ce02-algebracomm.qa \
     1 ce03.qa \
     1 ce07.qa \
