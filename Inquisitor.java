@@ -466,7 +466,7 @@ public class Inquisitor {
 
             int X = 1; // Default value
             if (totalStudents != null && examDataList.size() > 0) {
-                double exactX = (double) examDataList.size() / totalStudents;
+                double exactX = totalStudents/(double) examDataList.size();
                 X = (int) Math.ceil(exactX);
                 if (X < 1) {
                     X = 1;
