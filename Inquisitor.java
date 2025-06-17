@@ -1,8 +1,26 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class Inquisitor {
+    private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
+        try {
+            String input = commandLineArgs + "|" + examNumber;
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(input.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (int i = 0; i < 4; i++) { // First 4 bytes -> 8 hex chars
+                String hex = Integer.toHexString(0xff & digest[i]);
+                if(hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString().toUpperCase(); // e.g., "5C8A72F0"
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not supported", e);
+        }
+    }
 
     // Class to represent a question
     static class Question {
@@ -145,6 +163,9 @@ public class Inquisitor {
             return;
         }
 
+        // Gather command line string for exam ID obfuscation
+        String commandLineString = String.join(" ", args);
+
         // If totalExams is specified, seed must also be provided
         if (totalExams != null && seed == null) {
             System.out.println("Error: --total_exams requires that a seed is also provided using --seed <integer>");
@@ -264,8 +285,9 @@ public class Inquisitor {
                     writer.newLine();
                 }
 
-                // Write heading for each exam
-                writer.write("\\section*{" + escapeLatex(heading) + " " + ed.examNumber + "}");
+                // Write heading for each exam, with obfuscated exam ID
+                String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
+                writer.write("\\section*{" + escapeLatex(heading) + " ID: " + obfuscatedExamId + "}");
                 writer.newLine();
                 writer.newLine();
 
@@ -301,7 +323,7 @@ public class Inquisitor {
             System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
 
             // Write results.csv with new columns
-            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents);
+            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents, commandLineString);
             System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
 
             // Write answers_key.txt with seed prefix
@@ -434,9 +456,10 @@ public class Inquisitor {
      * @param csvFileName   Name of the CSV file to create.
      * @param T             Number of questions per exam.
      * @param totalStudents Total number of students.
+     * @param commandLineString The string of command line arguments, for ID obfuscation.
      * @throws IOException If an I/O error occurs.
      */
-    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T, Integer totalStudents) throws IOException {
+    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T, Integer totalStudents, String commandLineString) throws IOException {
         if (examDataList.isEmpty()) {
             System.out.println("No exams to write to CSV.");
             return;
@@ -446,7 +469,7 @@ public class Inquisitor {
         try (BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFileName))) {
             // Write header with new columns: "Surname", "Name", "Student ID"
             StringBuilder header = new StringBuilder();
-            header.append("Surname,Name,Student ID,Exam Number,Seed");
+            header.append("Surname,Name,Student ID,Exam ID,Seed");
             for (int i = 1; i <= T; i++) {
                 header.append(",A").append(i);
             }
@@ -477,7 +500,8 @@ public class Inquisitor {
             for (ExamData ed : examDataList) {
                 StringBuilder row = new StringBuilder();
                 row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
-                row.append(ed.examNumber).append(",").append(ed.seed).append(","); // Exam Number, Seed
+                String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
+                row.append(obfuscatedExamId).append(",").append(ed.seed).append(","); // Exam ID, Seed
 
                 // T empty answer cells (student will input their answers as indices, e.g., 1,2,3,4)
                 for (int i = 0; i < T; i++) {
@@ -487,59 +511,30 @@ public class Inquisitor {
                 // T formula cells
                 for (int i = 0; i < T; i++) {
                     // Determine column letters
-                    // Columns: A - Surname, B - Name, C - Student ID, D - Exam Number, E - Seed, F..(F+T-1) - A1..AT
-                    // (F+T) to (F+2T-1) - Q1..QT
-
-                    // Compute the column letter for A<N> (F = 6)
                     int answerColNum = 6 + i; // A=1, ..., F=6,...
                     String answerColLetter = getColumnLetter(answerColNum);
-
-                    // The current row number is examNumber +1 (since row 1 is header)
                     int rowIndex = ed.examNumber + 1;
-
-                    // Correct answer index (1-based for Excel formulas)
                     int correctIndex = ed.correctAnswerIndices.get(i) + 1;
-
-                    // Formula to check if the student's answer matches the correct index
-                    // Using semicolons as argument separators for locale compatibility
                     String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctIndex + ";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
-
-                    // Append the formula directly without external quotes
                     row.append(formula);
-
-                    // Only append a comma if it's not the last formula
                     if (i < T - 1) {
                         row.append(",");
                     }
                 }
 
-                // Compute the range for Q1 to QT
                 int checkStartColNum = 6 + T; // Q1 starts after T Answer columns
                 int checkEndColNum = 6 + 2 * T - 1; // QT ends at this column
                 String checkStartColLetter = getColumnLetter(checkStartColNum);
                 String checkEndColLetter = getColumnLetter(checkEndColNum);
                 String range = checkStartColLetter + (ed.examNumber + 1) + ":" + checkEndColLetter + (ed.examNumber + 1);
-
-                // Correct count
-                // Using semicolons as argument separators
                 String correctCountFormula = "=COUNTIF(" + range + ";\"C\")";
-
-                // Wrong count
                 String wrongCountFormula = "=COUNTIF(" + range + ";\"W\")";
-
-                // Not Given count
                 String notGivenCountFormula = "=COUNTIF(" + range + ";\"NA\")";
-
-                // Append the summary formulas directly without external quotes
                 row.append(",").append(correctCountFormula);
                 row.append(",").append(wrongCountFormula);
                 row.append(",").append(notGivenCountFormula);
-
-                // Write the exam row
                 csvWriter.write(row.toString());
                 csvWriter.newLine();
-
-                // Write X empty rows after each exam row
                 for (int i = 0; i < X; i++) {
                     StringBuilder emptyRow = new StringBuilder();
                     // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
