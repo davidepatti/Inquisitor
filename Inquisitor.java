@@ -469,7 +469,7 @@ public class Inquisitor {
         try (BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFileName))) {
             // Write header with new columns: "Surname", "Name", "Student ID"
             StringBuilder header = new StringBuilder();
-            header.append("Surname,Name,Student ID,Exam ID,Seed");
+            header.append("Surname,Name,Student ID,Exam ID,Seed,answers");
             for (int i = 1; i <= T; i++) {
                 header.append(",A").append(i);
             }
@@ -481,12 +481,6 @@ public class Inquisitor {
             csvWriter.newLine();
 
             // Calculate examInstances = totalStudents/totalExames
-            // Assuming examInstances is the number of empty rows to leave after each exam row
-            // Since examInstances might be a fraction, we round it up to ensure at least one empty row
-            // However, if totalStudents is greater than totalExams, examInstances will be less than 1, set to 1
-            // If totalExams is greater than totalStudents, examInstances can be 0, set to 1
-            // This ensures that there is always at least one empty row per exam
-
             int examInstances = 1; // Default value
             if (totalStudents != null && examDataList.size() > 0) {
                 double exactX = totalStudents/(double) examDataList.size();
@@ -501,32 +495,40 @@ public class Inquisitor {
                 StringBuilder row = new StringBuilder();
                 row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
                 String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
-                row.append(obfuscatedExamId).append(",").append(ed.seed).append(","); // Exam ID, Seed
+                row.append(obfuscatedExamId).append(",").append(ed.seed).append(",");
+                // Insert empty "answers" cell
+                row.append(",");
 
-                // T empty answer cells (student will input their answers as indices, e.g., 1,2,3,4)
-                for (int i = 0; i < T; i++) {
-                    row.append(",");
+                // For each A1..AT, insert formula referencing "answers" column, else empty
+                // "answers" is at column 6 (1-based)
+                int answersColNum = 6;
+                String answersColLetter = getColumnLetter(answersColNum);
+                int rowIndex = ed.examNumber + 1;
+                for (int i = 1; i <= T; i++) {
+                    // Formula: =IF($COL_ANSWERSR<>""; MID($COL_ANSWERSR; K; 1); "")
+                    String formula = "=IF($" + answersColLetter + rowIndex + "<>\"\"; MID($" + answersColLetter + rowIndex + ";" + i + ";1); \"\")";
+                    row.append(formula);
+                    if (i < T) row.append(",");
                 }
 
-                // T formula cells
+                // For each Q1..QT, insert formula as before, but update column indices
+                // A1..AT now start at column 7 (after answers), so Q1..QT start at 7+T = 7+T (1-based)
                 for (int i = 0; i < T; i++) {
                     // Determine column letters
-                    int answerColNum = 6 + i; // A=1, ..., F=6,...
+                    int answerColNum = 7 + i; // A1 is col 7, A2 col 8, ..., so Q1 is col 7+T
                     String answerColLetter = getColumnLetter(answerColNum);
-                    int rowIndex = ed.examNumber + 1;
                     int correctIndex = ed.correctAnswerIndices.get(i) + 1;
                     String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctIndex + ";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
+                    row.append(",");
                     row.append(formula);
-                    if (i < T - 1) {
-                        row.append(",");
-                    }
                 }
 
-                int checkStartColNum = 6 + T; // Q1 starts after T Answer columns
-                int checkEndColNum = 6 + 2 * T - 1; // QT ends at this column
+                // Update indices for Correct, Wrong, Not Given
+                int checkStartColNum = 7 + T; // Q1 starts after T Answer columns
+                int checkEndColNum = 7 + 2 * T - 1; // QT ends at this column
                 String checkStartColLetter = getColumnLetter(checkStartColNum);
                 String checkEndColLetter = getColumnLetter(checkEndColNum);
-                String range = checkStartColLetter + (ed.examNumber + 1) + ":" + checkEndColLetter + (ed.examNumber + 1);
+                String range = checkStartColLetter + rowIndex + ":" + checkEndColLetter + rowIndex;
                 String correctCountFormula = "=COUNTIF(" + range + ";\"C\")";
                 String wrongCountFormula = "=COUNTIF(" + range + ";\"W\")";
                 String notGivenCountFormula = "=COUNTIF(" + range + ";\"NA\")";
@@ -537,9 +539,9 @@ public class Inquisitor {
                 csvWriter.newLine();
                 for (int i = 0; i < examInstances; i++) {
                     StringBuilder emptyRow = new StringBuilder();
-                    // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
-                    // So total columns = 5 + 2*T + 3 = 8 + 2*T
-                    int totalColumns = 8 + 2 * T;
+                    // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 1 ("answers") + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
+                    // So total columns = 6 + 2*T + 3 = 9 + 2*T
+                    int totalColumns = 9 + 2 * T;
                     for (int j = 0; j < totalColumns - 1; j++) {
                         emptyRow.append(",");
                     }
