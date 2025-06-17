@@ -40,6 +40,7 @@ public class Inquisitor {
         Integer totalStudents = null; // New argument for total students
         String heading = null;  // For the -h option
         String subheading = null; // For the -h2 option
+        String basePath = null; // New argument for base path
 
         // Parse for --seed or -s, --total_exams or -t, --students or -st, -h, and -h2
         Iterator<String> iterator = argsList.iterator();
@@ -111,6 +112,14 @@ public class Inquisitor {
                     return;
                 }
             }
+            else if (arg.equalsIgnoreCase("--base_path") || arg.equalsIgnoreCase("-b")) {
+                if (iterator.hasNext()) {
+                    basePath = iterator.next();
+                } else {
+                    System.out.println("Base path string missing after " + arg);
+                    return;
+                }
+            }
         }
 
         // After parsing, remove the flags and their values from argsList
@@ -121,7 +130,8 @@ public class Inquisitor {
             if (arg.equalsIgnoreCase("--seed") || arg.equalsIgnoreCase("-s") ||
                 arg.equalsIgnoreCase("--total_exams") || arg.equalsIgnoreCase("-t") ||
                 arg.equalsIgnoreCase("--students") || arg.equalsIgnoreCase("-st") ||
-                arg.equalsIgnoreCase("-h") || arg.equalsIgnoreCase("-h2")) {
+                arg.equalsIgnoreCase("-h") || arg.equalsIgnoreCase("-h2") ||
+                arg.equalsIgnoreCase("--base_path") || arg.equalsIgnoreCase("-b")) {
                 i++; // Skip the next argument as it's the value for the flag
             } else {
                 filteredArgs.add(arg);
@@ -130,8 +140,8 @@ public class Inquisitor {
 
         // Now, filteredArgs contains only the question selection arguments
         if (filteredArgs.size() == 0 || filteredArgs.size() % 2 != 0) {
-            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--seed <integer>] [--total_exams <integer>] [--students <integer>]");
-            System.out.println("Example: java Inquisitor 5 questions1.txt 10 questions2.txt -h \"Midterm Exam\" -h2 \"Calculus Section\" --seed 1000 --total_exams 3 --students 30");
+            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--base_path <path>] [--seed <integer>] [--total_exams <integer>] [--students <integer>]");
+            System.out.println("Example: java Inquisitor 5 questions1.txt 10 questions2.txt -h \"Midterm Exam\" -h2 \"Calculus Section\" --base_path ./questions --seed 1000 --total_exams 3 --students 30");
             return;
         }
 
@@ -195,7 +205,7 @@ public class Inquisitor {
         // Generate all exams
         for (int exam = 1; exam <= examsToGenerate; exam++) {
             long currentSeed = (seed != null) ? seed : new Random().nextLong();
-            List<Question> selectedQuestions = generateExam(filteredArgs, currentSeed, exam, randomInstance);
+            List<Question> selectedQuestions = generateExam(filteredArgs, basePath, currentSeed, exam, randomInstance);
             if (selectedQuestions == null) {
                 System.out.println("Failed to generate Exam " + exam);
                 continue;
@@ -308,12 +318,13 @@ public class Inquisitor {
      * Generates a list of selected Question objects for an exam.
      *
      * @param filteredArgs List of question selection arguments.
+     * @param basePath     Base directory to search for question files (optional, uses current directory if null).
      * @param seed         Seed value for randomness.
      * @param examNumber   The current exam number.
      * @param random       Random instance for shuffling and selection.
      * @return List of selected Question objects.
      */
-    private static List<Question> generateExam(List<String> filteredArgs, long seed, int examNumber, Random random) {
+    private static List<Question> generateExam(List<String> filteredArgs, String basePath, long seed, int examNumber, Random random) {
         String seedInfo = String.valueOf(seed);
         System.out.println("Inquisitor: Selecting questions for Exam " + examNumber + " with seed: " + seed);
 
@@ -334,26 +345,27 @@ public class Inquisitor {
                 return null;
             }
 
-            String filePath = filteredArgs.get(i + 1);
+            String relativePath = filteredArgs.get(i + 1);
+            String fullPath = (basePath != null) ? Paths.get(basePath, relativePath).toString() : relativePath;
             List<Question> allQuestions = null;
 
             // Check if the question file exists
-            File qaFile = new File(filePath);
+            File qaFile = new File(fullPath);
             if (!qaFile.exists()) {
-                System.out.println("Question file not found: " + filePath);
+                System.out.println("Question file not found: " + fullPath);
                 return null;
             }
 
             try {
-                allQuestions = readQuestionsFromFile(filePath);
+                allQuestions = readQuestionsFromFile(fullPath);
             } catch (IOException e) {
-                System.out.println("Error reading file: " + filePath);
+                System.out.println("Error reading file: " + fullPath);
                 e.printStackTrace();
                 return null;
             }
 
             if (numQuestions > allQuestions.size()) {
-                System.out.println("Requested " + numQuestions + " questions, but only " + allQuestions.size() + " available in " + filePath);
+                System.out.println("Requested " + numQuestions + " questions, but only " + allQuestions.size() + " available in " + fullPath);
                 return null;
             }
 
