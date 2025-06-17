@@ -1,24 +1,24 @@
 #!/bin/bash
 
 # Define variables at the beginning
-SEED=1012025                # Removed leading zero to avoid octal interpretation
-TOT_EXAMS=10
-TOT_STUDENTS=3
-HEADING="Test pollo"
-HEADING2="Durata 50 min Ciao"
+SEED=20250620
+TOT_EXAMS=2
+TOT_STUDENTS=30
+HEADING="Calcoltori Elettronici 2025 06 20"
+HEADING2="(Corretta: 1, Errata: -0.5, N/A: 0)"
 
 # Execute the Java program with proper variable expansion and quoting
 java Inquisitor \
-    1 1_intro.qa \
-    1 2_es.qa \
-    1 3_circuit.qa \
-    1 4_arduino.qa \
-    1 5_arduino2.qa \
-    1 6_lab.qa \
-    1 dpiot2.qa \
-    1 dpiot3.qa \
-    1 dpiot4.qa \
-    1 dpiot5.qa \
+    1 ce02-algebracomm.qa \
+    1 ce03.qa \
+    1 ce07.qa \
+    1 ce08.qa \
+    1 ce12-circuiti.qa \
+    1 1_isa.qa \
+    1 2_cpuseq.qa \
+    1 3_pipeline.qa \       
+    1 4_hazard.qa \
+    1 5_cache.qa \
     -t "$TOT_EXAMS" -st "$TOT_STUDENTS" -s "$SEED" -h "$HEADING" -h2 "$HEADING2"
 
 # Check if Java execution was successful
