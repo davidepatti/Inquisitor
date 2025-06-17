@@ -286,8 +286,8 @@ public class Inquisitor {
                 // Write each question's LaTeX content
                 for (String questionTex : latexQuestions) {
                     writer.write(questionTex);
-                    writer.newLine();
-                    writer.newLine();
+                    //writer.newLine();
+           //         writer.newLine();
                 }
 
                 writer.write("\\end{multicols}");
@@ -406,7 +406,7 @@ public class Inquisitor {
             StringBuilder questionTex = new StringBuilder();
 
             // Write question text with escaped LaTeX characters, preserving math mode
-            questionTex.append("\\textbf{Question " + questionNumber + ":} " + escapeLatex(q.text));
+            questionTex.append("\\textbf{Q" + questionNumber + ": " + escapeLatex(q.text)+"}");
             questionTex.append("\n\n");
 
             // Begin enumerate environment with numerical labels
