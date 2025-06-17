@@ -480,23 +480,23 @@ public class Inquisitor {
             csvWriter.write(header.toString());
             csvWriter.newLine();
 
-            // Calculate X = totalExams / totalStudents
-            // Assuming X is the number of empty rows to leave after each exam row
-            // Since X might be a fraction, we round it up to ensure at least one empty row
-            // However, if totalStudents is greater than totalExams, X will be less than 1, set to 1
-            // If totalExams is greater than totalStudents, X can be 0, set to 1
+            // Calculate examInstances = totalStudents/totalExames
+            // Assuming examInstances is the number of empty rows to leave after each exam row
+            // Since examInstances might be a fraction, we round it up to ensure at least one empty row
+            // However, if totalStudents is greater than totalExams, examInstances will be less than 1, set to 1
+            // If totalExams is greater than totalStudents, examInstances can be 0, set to 1
             // This ensures that there is always at least one empty row per exam
 
-            int X = 1; // Default value
+            int examInstances = 1; // Default value
             if (totalStudents != null && examDataList.size() > 0) {
                 double exactX = totalStudents/(double) examDataList.size();
-                X = (int) Math.ceil(exactX);
-                if (X < 1) {
-                    X = 1;
+                examInstances = (int) Math.ceil(exactX);
+                if (examInstances < 1) {
+                    examInstances = 1;
                 }
             }
 
-            // For each exam, write a row and then X empty rows
+            // For each exam, write a row and then examInstances empty rows
             for (ExamData ed : examDataList) {
                 StringBuilder row = new StringBuilder();
                 row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
@@ -535,7 +535,7 @@ public class Inquisitor {
                 row.append(",").append(notGivenCountFormula);
                 csvWriter.write(row.toString());
                 csvWriter.newLine();
-                for (int i = 0; i < X; i++) {
+                for (int i = 0; i < examInstances; i++) {
                     StringBuilder emptyRow = new StringBuilder();
                     // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
                     // So total columns = 5 + 2*T + 3 = 8 + 2*T
