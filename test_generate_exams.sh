@@ -7,7 +7,7 @@ TOT_STUDENTS=30
 HEADING="Calcoltori Elettronici 2025 06 20"
 HEADING2="(Corretta: 1, Errata: -0.5, N/A: 0)"
 # Directory where question files are located
-BASE_PATH="./questions"
+BASE_PATH="../questions"
 
 # Execute the Java program with proper variable expansion and quoting
 java Inquisitor \
@@ -19,7 +19,7 @@ java Inquisitor \
     1 ce12-circuiti.qa \
     1 1_isa.qa \
     1 2_cpuseq.qa \
-    1 3_pipeline.qa \       
+    1 3_pipeline.qa \
     1 4_hazard.qa \
     1 5_cache.qa \
     -t "$TOT_EXAMS" -st "$TOT_STUDENTS" -s "$SEED" -h "$HEADING" -h2 "$HEADING2"
