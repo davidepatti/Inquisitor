@@ -518,7 +518,8 @@ public class Inquisitor {
                     int answerColNum = 7 + i; // A1 is col 7, A2 col 8, ..., so Q1 is col 7+T
                     String answerColLetter = getColumnLetter(answerColNum);
                     int correctIndex = ed.correctAnswerIndices.get(i) + 1;
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=" + correctIndex + ";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
+                    // Compare as string, not number
+                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
                     row.append(",");
                     row.append(formula);
                 }
