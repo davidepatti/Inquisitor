@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
 public class Inquisitor {
     private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
         try {
-            String input = commandLineArgs + "|" + examNumber;
+            String input = commandLineArgs+'|'+examNumber;
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] digest = md.digest(input.getBytes());
             StringBuilder hexString = new StringBuilder();
@@ -16,7 +16,7 @@ public class Inquisitor {
                 if(hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
-            return hexString.toString().toUpperCase(); // e.g., "5C8A72F0"
+            return hexString.append(examNumber).toString().toUpperCase(); // e.g., "5C8A72F0"
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not supported", e);
         }
@@ -270,7 +270,7 @@ public class Inquisitor {
             writer.newLine();
             writer.write("\\geometry{a4paper, margin=0.75in}"); // Thinner margins
             writer.newLine();
-            writer.write("\\setstretch{0.9}");                 // Reduced line spacing
+            writer.write("\\setstretch{0.8}");                 // Reduced line spacing
             writer.newLine();
             writer.write("\\begin{document}");
             writer.newLine();
