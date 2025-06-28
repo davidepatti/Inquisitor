@@ -287,14 +287,15 @@ public class Inquisitor {
 
                 // Write heading for each exam, with obfuscated exam ID
                 String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
-                writer.write("\\section*{" + escapeLatex(heading) + " ID: " + obfuscatedExamId + "}");
-                writer.newLine();
+                writer.write("\\section*{" + escapeLatex(heading) + "}");
+                writer.write("{\\footnotesize " + obfuscatedExamId + "}");
+                //writer.newLine();
                 writer.newLine();
 
                 // If subheading is provided, add it below the main heading
                 if (subheading != null) {
                     writer.write("{\\footnotesize " + escapeLatex(subheading) + "}");
-                    writer.newLine();
+                    //writer.newLine();
                     writer.newLine();
                 }
 
