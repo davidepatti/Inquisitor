@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
 public class Inquisitor {
     private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
         try {
-            String input = commandLineArgs+'|'+examNumber;
+            String input = commandLineArgs;
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] digest = md.digest(input.getBytes());
             StringBuilder hexString = new StringBuilder();
@@ -287,8 +287,8 @@ public class Inquisitor {
 
                 // Write heading for each exam, with obfuscated exam ID
                 String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
-                writer.write("\\section*{" + escapeLatex(heading) + "}");
-                writer.write("{\\footnotesize " + obfuscatedExamId + "}");
+                writer.write("\\section*{" + escapeLatex(heading) + " \\footnotesize [" + obfuscatedExamId+"]}");
+                //writer.write("{\\footnotesize " + obfuscatedExamId + "}");
                 //writer.newLine();
                 writer.newLine();
 
