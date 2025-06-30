@@ -505,6 +505,7 @@ public class Inquisitor {
                 int answersColNum = 6;
                 String answersColLetter = getColumnLetter(answersColNum);
                 int rowIndex = ed.examNumber + 1;
+                rowIndex = rowIndex+examInstances*(ed.examNumber-1);
                 for (int i = 1; i <= T; i++) {
                     // Formula: =IF($COL_ANSWERSR<>""; MID($COL_ANSWERSR; K; 1); "")
                     String formula = "=IF($" + answersColLetter + rowIndex + "<>\"\"; MID($" + answersColLetter + rowIndex + ";" + i + ";1); \"\")";
