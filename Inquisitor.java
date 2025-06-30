@@ -521,7 +521,7 @@ public class Inquisitor {
                     String answerColLetter = getColumnLetter(answerColNum);
                     int correctIndex = ed.correctAnswerIndices.get(i) + 1;
                     // Compare as string, not number
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\"\";\"NA\";\"W\"))";
+                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\" \";\"NA\";\"W\"))";
                     row.append(",");
                     row.append(formula);
                 }
