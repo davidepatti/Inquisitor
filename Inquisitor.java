@@ -521,7 +521,7 @@ public class Inquisitor {
                     String answerColLetter = getColumnLetter(answerColNum);
                     int correctIndex = ed.correctAnswerIndices.get(i) + 1;
                     // Compare as string, not number
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\" \";\"NA\";\"W\"))";
+                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\" \";\"X\";\"W\"))";
                     row.append(",");
                     row.append(formula);
                 }
@@ -534,7 +534,7 @@ public class Inquisitor {
                 String range = checkStartColLetter + rowIndex + ":" + checkEndColLetter + rowIndex;
                 String correctCountFormula = "=COUNTIF(" + range + ";\"C\")";
                 String wrongCountFormula = "=COUNTIF(" + range + ";\"W\")";
-                String notGivenCountFormula = "=COUNTIF(" + range + ";\"NA\")";
+                String notGivenCountFormula = "=COUNTIF(" + range + ";\"X\")";
                 row.append(",").append(correctCountFormula);
                 row.append(",").append(wrongCountFormula);
                 row.append(",").append(notGivenCountFormula);
