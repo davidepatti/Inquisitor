@@ -6,6 +6,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -17,18 +19,19 @@ public class InquisitorSwingUI extends JFrame {
     private final DefaultComboBoxModel<CourseProfile> courseModel = new DefaultComboBoxModel<>();
     private final JComboBox<CourseProfile> courseCombo = new JComboBox<>(courseModel);
 
-    private final JTextField headingField = new JTextField(30);
-    private final JTextField subheadingField = new JTextField(30);
-    private final JSpinner seedSpinner = new JSpinner(new SpinnerNumberModel(20250630L, 0L, Long.MAX_VALUE, 1L));
+    private final JTextField headingField = new JTextField(22);
+    private final JTextField subheadingField = new JTextField(22);
+    private final JSpinner seedSpinner = new JSpinner(new SpinnerNumberModel(defaultSeedForToday(), 0L, Long.MAX_VALUE, 1L));
     private final JSpinner examsSpinner = new JSpinner(new SpinnerNumberModel(8, 1, 10000, 1));
     private final JSpinner studentsSpinner = new JSpinner(new SpinnerNumberModel(120, 1, 1000000, 1));
 
-    private final JTextField basePathField = new JTextField(30);
+    private final JTextField basePathField = new JTextField(22);
     private final JPanel qaPanel = new JPanel(new GridBagLayout());
-    private final JTextArea logArea = new JTextArea(12, 80);
+    private final JTextArea logArea = new JTextArea(12, 56);
     private final JCheckBox compilePdfBox = new JCheckBox("Compile PDF with pdflatex (2 passes)", true);
     private final JButton generateButton = new JButton("Generate Exams");
     private final JButton openPdfButton = new JButton("Open PDF");
+    private final JLabel totalQuestionsLabel = new JLabel("Total selected questions: 0");
 
     private final Map<String, JSpinner> fileSpinners = new LinkedHashMap<>();
     private CourseProfile currentCourse;
@@ -40,6 +43,10 @@ public class InquisitorSwingUI extends JFrame {
             InquisitorSwingUI ui = new InquisitorSwingUI();
             ui.setVisible(true);
         });
+    }
+
+    private static long defaultSeedForToday() {
+        return Long.parseLong(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
     }
 
     private InquisitorSwingUI() {
@@ -68,7 +75,7 @@ public class InquisitorSwingUI extends JFrame {
         wireActions();
 
         pack();
-        setMinimumSize(new Dimension(980, 700));
+        setMinimumSize(new Dimension(760, 700));
         setLocationRelativeTo(null);
     }
 
@@ -135,9 +142,11 @@ public class InquisitorSwingUI extends JFrame {
         actions.add(compilePdfBox);
         actions.add(generateButton);
         actions.add(openPdfButton);
+        actions.add(Box.createHorizontalStrut(16));
+        actions.add(totalQuestionsLabel);
         openPdfButton.setEnabled(false);
 
-        JPanel upper = new JPanel(new GridLayout(1, 2, 8, 8));
+        JPanel upper = new JPanel(new GridLayout(2, 1, 8, 8));
         upper.add(global);
         upper.add(course);
 
@@ -336,6 +345,7 @@ public class InquisitorSwingUI extends JFrame {
             addQaMessage("Directory not found: " + basePath);
             qaPanel.revalidate();
             qaPanel.repaint();
+            refreshTotalQuestionsLabel();
             return;
         }
 
@@ -349,6 +359,7 @@ public class InquisitorSwingUI extends JFrame {
             addQaMessage("Failed to read .qa files: " + ex.getMessage());
             qaPanel.revalidate();
             qaPanel.repaint();
+            refreshTotalQuestionsLabel();
             return;
         }
 
@@ -356,6 +367,7 @@ public class InquisitorSwingUI extends JFrame {
             addQaMessage("No .qa files found in " + basePath);
             qaPanel.revalidate();
             qaPanel.repaint();
+            refreshTotalQuestionsLabel();
             return;
         }
 
@@ -383,6 +395,7 @@ public class InquisitorSwingUI extends JFrame {
 
             JSpinner spinner = new JSpinner(new SpinnerNumberModel(defaultValue, 0, Math.max(available, 0), 1));
             spinner.setPreferredSize(new Dimension(70, spinner.getPreferredSize().height));
+            spinner.addChangeListener(e -> refreshTotalQuestionsLabel());
             gbc.gridx = 2;
             qaPanel.add(spinner, gbc);
 
@@ -400,6 +413,7 @@ public class InquisitorSwingUI extends JFrame {
 
         qaPanel.revalidate();
         qaPanel.repaint();
+        refreshTotalQuestionsLabel();
     }
 
     private void addQaMessage(String text) {
@@ -675,6 +689,14 @@ public class InquisitorSwingUI extends JFrame {
     private void appendLog(String line) {
         logArea.append(line + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());
+    }
+
+    private void refreshTotalQuestionsLabel() {
+        int totalSelected = 0;
+        for (JSpinner spinner : fileSpinners.values()) {
+            totalSelected += ((Number) spinner.getValue()).intValue();
+        }
+        totalQuestionsLabel.setText("Total selected questions: " + totalSelected);
     }
 
     private List<CourseProfile> loadProfiles() {

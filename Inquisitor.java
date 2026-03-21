@@ -1,10 +1,16 @@
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class Inquisitor {
+    private static long defaultSeedForToday() {
+        return Long.parseLong(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
+    }
+
     private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
         try {
             String input = commandLineArgs;
@@ -166,10 +172,9 @@ public class Inquisitor {
         // Gather command line string for exam ID obfuscation
         String commandLineString = String.join(" ", args);
 
-        // If totalExams is specified, seed must also be provided
-        if (totalExams != null && seed == null) {
-            System.out.println("Error: --total_exams requires that a seed is also provided using --seed <integer>");
-            return;
+        if (seed == null) {
+            seed = defaultSeedForToday();
+            System.out.println("No seed provided. Using date-based seed: " + seed);
         }
 
         // Set default heading if not provided
@@ -179,12 +184,7 @@ public class Inquisitor {
 
         // Create output folder name by concatenating HEADING and SEED with an underscore
         String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
-        String outputFolderName;
-        if (seed != null) {
-            outputFolderName = sanitizedHeading + "_" + seed;
-        } else {
-            outputFolderName = sanitizedHeading + "_default";
-        }
+        String outputFolderName = sanitizedHeading + "_" + seed;
         Path outputFolderPath = Paths.get(outputFolderName);
 
         // Create the output folder if it doesn't exist
@@ -200,7 +200,7 @@ public class Inquisitor {
         }
 
         // Initialize output filenames with seed prefix
-        String seedPrefix = (seed != null) ? String.valueOf(seed) : "default";
+        String seedPrefix = String.valueOf(seed);
         String outputFileName = seedPrefix + "_all_exams.tex";
         String csvFileName = seedPrefix + "_results.csv";
         String answersKeyFileName = seedPrefix + "_answers_key.txt";
@@ -213,19 +213,14 @@ public class Inquisitor {
         List<ExamData> examDataList = new ArrayList<>();
 
         // Initialize a single Random instance with the provided seed
-        Random randomInstance;
-        if (seed != null) {
-            randomInstance = new Random(seed);
-        } else {
-            randomInstance = new Random(); // Use default seed
-        }
+        Random randomInstance = new Random(seed);
 
         // Determine the total number of exams
         int examsToGenerate = (totalExams != null) ? totalExams : 1;
 
         // Generate all exams
         for (int exam = 1; exam <= examsToGenerate; exam++) {
-            long currentSeed = (seed != null) ? seed : new Random().nextLong();
+            long currentSeed = seed;
             List<Question> selectedQuestions = generateExam(filteredArgs, basePath, currentSeed, exam, randomInstance);
             if (selectedQuestions == null) {
                 System.out.println("Failed to generate Exam " + exam);
