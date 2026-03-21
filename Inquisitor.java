@@ -11,6 +11,19 @@ public class Inquisitor {
         return Long.parseLong(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
     }
 
+    private static Path resolveOutputBasePath(String basePath, List<String> filteredArgs) {
+        if (basePath != null && !basePath.isBlank()) {
+            return Paths.get(basePath);
+        }
+        if (filteredArgs.size() >= 2) {
+            Path firstQaPath = Paths.get(filteredArgs.get(1));
+            if (firstQaPath.getParent() != null) {
+                return firstQaPath.getParent();
+            }
+        }
+        return Paths.get(".");
+    }
+
     private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
         try {
             String input = commandLineArgs;
@@ -185,15 +198,16 @@ public class Inquisitor {
         // Create output folder name by concatenating HEADING and SEED with an underscore
         String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
         String outputFolderName = sanitizedHeading + "_" + seed;
-        Path outputFolderPath = Paths.get(outputFolderName);
+        Path outputBasePath = resolveOutputBasePath(basePath, filteredArgs);
+        Path outputFolderPath = outputBasePath.resolve(outputFolderName);
 
         // Create the output folder if it doesn't exist
         if (!Files.exists(outputFolderPath)) {
             try {
                 Files.createDirectories(outputFolderPath);
-                System.out.println("Created output directory: " + outputFolderName);
+                System.out.println("Created output directory: " + outputFolderPath.toAbsolutePath());
             } catch (IOException e) {
-                System.out.println("Error creating output directory: " + outputFolderName);
+                System.out.println("Error creating output directory: " + outputFolderPath.toAbsolutePath());
                 e.printStackTrace();
                 return;
             }

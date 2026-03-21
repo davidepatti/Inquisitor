@@ -346,6 +346,7 @@ public class InquisitorSwingUI extends JFrame {
             qaPanel.revalidate();
             qaPanel.repaint();
             refreshTotalQuestionsLabel();
+            refreshPdfButtonState();
             return;
         }
 
@@ -360,6 +361,7 @@ public class InquisitorSwingUI extends JFrame {
             qaPanel.revalidate();
             qaPanel.repaint();
             refreshTotalQuestionsLabel();
+            refreshPdfButtonState();
             return;
         }
 
@@ -368,6 +370,7 @@ public class InquisitorSwingUI extends JFrame {
             qaPanel.revalidate();
             qaPanel.repaint();
             refreshTotalQuestionsLabel();
+            refreshPdfButtonState();
             return;
         }
 
@@ -414,6 +417,7 @@ public class InquisitorSwingUI extends JFrame {
         qaPanel.revalidate();
         qaPanel.repaint();
         refreshTotalQuestionsLabel();
+        refreshPdfButtonState();
     }
 
     private void addQaMessage(String text) {
@@ -524,7 +528,7 @@ public class InquisitorSwingUI extends JFrame {
                     return code;
                 }
                 if (compilePdfBox.isSelected()) {
-                    int texCode = compileLatex(heading, seed, this::publish);
+                    int texCode = compileLatex(basePath, heading, seed, this::publish);
                     if (texCode != 0) {
                         return texCode;
                     }
@@ -581,11 +585,12 @@ public class InquisitorSwingUI extends JFrame {
         return process.waitFor();
     }
 
-    private int compileLatex(String heading, long seed, java.util.function.Consumer<String> logger) throws IOException, InterruptedException {
-        String outputDir = sanitizeHeading(heading) + "_" + seed;
+    private int compileLatex(String basePath, String heading, long seed, java.util.function.Consumer<String> logger) throws IOException, InterruptedException {
+        Path outputDirPath = getOutputDirPath(basePath, heading, seed);
+        String outputDir = outputDirPath.toString();
         String texFile = seed + "_all_exams.tex";
 
-        Path dir = Paths.get(outputDir);
+        Path dir = outputDirPath;
         if (!Files.isDirectory(dir)) {
             logger.accept("Skipping pdflatex: output directory not found: " + outputDir);
             return 0;
@@ -628,16 +633,23 @@ public class InquisitorSwingUI extends JFrame {
         return heading.replaceAll("\\s+", "_");
     }
 
-    private Path getExpectedPdfPath(String heading, long seed) {
+    private Path getOutputDirPath(String basePath, String heading, long seed) {
+        Path base = (basePath == null || basePath.isBlank()) ? Paths.get(".") : Paths.get(basePath);
         String outputDir = sanitizeHeading(heading) + "_" + seed;
+        return base.resolve(outputDir);
+    }
+
+    private Path getExpectedPdfPath(String basePath, String heading, long seed) {
+        Path outputDir = getOutputDirPath(basePath, heading, seed);
         String pdfFile = seed + "_all_exams.pdf";
-        return Paths.get(outputDir).resolve(pdfFile);
+        return outputDir.resolve(pdfFile);
     }
 
     private void refreshPdfButtonState() {
+        String basePath = basePathField.getText().trim();
         String heading = headingField.getText().trim();
         long seed = ((Number) seedSpinner.getValue()).longValue();
-        Path expectedPdf = getExpectedPdfPath(heading, seed);
+        Path expectedPdf = getExpectedPdfPath(basePath, heading, seed);
         if (Files.exists(expectedPdf)) {
             lastGeneratedPdf = expectedPdf;
             openPdfButton.setEnabled(true);
@@ -652,9 +664,10 @@ public class InquisitorSwingUI extends JFrame {
             return;
         }
 
+        String basePath = basePathField.getText().trim();
         String heading = headingField.getText().trim();
         long seed = ((Number) seedSpinner.getValue()).longValue();
-        Path expectedPdf = getExpectedPdfPath(heading, seed);
+        Path expectedPdf = getExpectedPdfPath(basePath, heading, seed);
         Path candidate = Files.exists(expectedPdf) ? expectedPdf : lastGeneratedPdf;
 
         if (candidate == null || !Files.exists(candidate)) {
