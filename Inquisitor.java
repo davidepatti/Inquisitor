@@ -579,8 +579,8 @@ public class Inquisitor {
                 writer.newLine();
                 int questionNum = 1;
                 for (Integer correctIndex : ed.correctAnswerIndices) {
-                    // Directly use the number for the correct answer
-                    writer.write("Q" + questionNum + ": " + correctIndex);
+                    int oneBasedIndex = correctIndex + 1;
+                    writer.write("Q" + questionNum + ": " + oneBasedIndex);
                     writer.newLine();
                     questionNum++;
                 }
