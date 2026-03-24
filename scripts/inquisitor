@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP_NAME="${APP_NAME:-Inquisitor}"
+APP_BIN="${ROOT_DIR}/dist/${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+
+if [[ ! -x "${APP_BIN}" ]]; then
+  "${ROOT_DIR}/scripts/build_macos_app.sh"
+fi
+
+exec "${ROOT_DIR}/scripts/launch_inquisitor.sh" "$@"
