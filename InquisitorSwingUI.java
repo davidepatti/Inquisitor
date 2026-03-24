@@ -39,7 +39,7 @@ public class InquisitorSwingUI extends JFrame {
     private CourseProfile currentCourse;
     private boolean suppressCourseEvents = false;
     private Path lastGeneratedPdf;
-    private Path profilesFilePath = Paths.get(DEFAULT_PROFILES_FILE);
+    private Path profilesFilePath = resolveDefaultProfilesPath();
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -50,6 +50,41 @@ public class InquisitorSwingUI extends JFrame {
 
     private static long defaultSeedForToday() {
         return Long.parseLong(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
+    }
+
+    private static Path resolveDefaultProfilesPath() {
+        Path fromWorkingDir = Paths.get(DEFAULT_PROFILES_FILE).toAbsolutePath().normalize();
+        if (Files.isRegularFile(fromWorkingDir)) {
+            return fromWorkingDir;
+        }
+
+        Path appDir = resolveAppDirectory();
+        if (appDir != null) {
+            Path fromAppDir = appDir.resolve(DEFAULT_PROFILES_FILE).toAbsolutePath().normalize();
+            if (Files.isRegularFile(fromAppDir)) {
+                return fromAppDir;
+            }
+        }
+
+        return fromWorkingDir;
+    }
+
+    private static Path resolveAppDirectory() {
+        try {
+            java.net.URL location = InquisitorSwingUI.class.getProtectionDomain().getCodeSource().getLocation();
+            if (location == null) {
+                return null;
+            }
+            Path codeLocation = Paths.get(location.toURI()).toAbsolutePath().normalize();
+            if (Files.isRegularFile(codeLocation)) {
+                return codeLocation.getParent();
+            }
+            if (Files.isDirectory(codeLocation)) {
+                return codeLocation;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private InquisitorSwingUI() {
@@ -357,11 +392,24 @@ public class InquisitorSwingUI extends JFrame {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Select course profiles properties file");
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        File workingDir = new File(System.getProperty("user.dir"));
-        if (workingDir.isDirectory()) {
-            chooser.setCurrentDirectory(workingDir);
+        File suggestedDir = null;
+        Path currentParent = profilesFilePath.toAbsolutePath().normalize().getParent();
+        if (currentParent != null) {
+            File parentFile = currentParent.toFile();
+            if (parentFile.isDirectory()) {
+                suggestedDir = parentFile;
+            }
         }
-        chooser.setSelectedFile(new File(workingDir, profilesFilePath.getFileName().toString()));
+        if (suggestedDir == null) {
+            File workingDir = new File(System.getProperty("user.dir"));
+            if (workingDir.isDirectory()) {
+                suggestedDir = workingDir;
+            }
+        }
+        if (suggestedDir != null) {
+            chooser.setCurrentDirectory(suggestedDir);
+            chooser.setSelectedFile(new File(suggestedDir, profilesFilePath.getFileName().toString()));
+        }
 
         int result = chooser.showOpenDialog(this);
         if (result != JFileChooser.APPROVE_OPTION) {
@@ -871,7 +919,7 @@ public class InquisitorSwingUI extends JFrame {
 
             String prefix = "course." + id + ".";
             props.setProperty(prefix + "name", profile.name);
-            props.setProperty(prefix + "path", profile.basePath);
+            props.setProperty(prefix + "path", toStoredProfilePath(profile.basePath));
             props.setProperty(prefix + "counts", formatCounts(profile.questionCounts));
         }
 
@@ -891,6 +939,36 @@ public class InquisitorSwingUI extends JFrame {
         } catch (IOException ex) {
             appendLog("Failed to save " + profilesFilePath + ": " + ex.getMessage());
         }
+    }
+
+    private String toStoredProfilePath(String basePath) {
+        String raw = (basePath == null) ? "" : basePath.trim();
+        if (raw.isEmpty()) {
+            return raw;
+        }
+
+        Path profilesDir = profilesFilePath.toAbsolutePath().normalize().getParent();
+        if (profilesDir == null) {
+            return raw;
+        }
+
+        Path path;
+        try {
+            path = Paths.get(raw);
+        } catch (Exception ex) {
+            return raw;
+        }
+
+        Path absolute = path.isAbsolute() ? path.normalize() : profilesDir.resolve(path).normalize();
+        try {
+            Path rel = profilesDir.relativize(absolute);
+            String relText = rel.toString().replace(File.separatorChar, '/');
+            if (!relText.isEmpty() && !relText.startsWith("..") && !rel.isAbsolute()) {
+                return relText.startsWith(".") ? relText : "./" + relText;
+            }
+        } catch (IllegalArgumentException ignored) {
+        }
+        return raw;
     }
 
     private void parseCounts(String raw, Map<String, Integer> target) {

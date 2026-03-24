@@ -11,9 +11,11 @@ APP_NAME="${APP_NAME:-Inquisitor}"
 MAIN_CLASS="${MAIN_CLASS:-InquisitorSwingUI}"
 JAR_NAME="${JAR_NAME:-Inquisitor.jar}"
 ICON_PATH="${ICON_PATH:-${ROOT_DIR}/assets/Inquisitor.icns}"
+APP_PATH="${DIST_DIR}/${APP_NAME}.app"
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${CLASS_DIR}" "${INPUT_DIR}" "${DIST_DIR}"
+rm -rf "${APP_PATH}"
 
 javac -d "${CLASS_DIR}" \
   "${ROOT_DIR}/Inquisitor.java" \
@@ -39,7 +41,19 @@ if [[ -f "${ICON_PATH}" ]]; then
 fi
 
 jpackage "${JPACKAGE_ARGS[@]}"
+APP_DATA_DIR="${APP_PATH}/Contents/app"
 
-APP_PATH="${DIST_DIR}/${APP_NAME}.app"
+# Bundle default course profiles and sample QA folders for Finder launches.
+if [[ -f "${ROOT_DIR}/courses.properties" ]]; then
+  cp "${ROOT_DIR}/courses.properties" "${APP_DATA_DIR}/courses.properties"
+fi
+
+for sample_dir in Wallace_questions Lynch_questions; do
+  if [[ -d "${ROOT_DIR}/${sample_dir}" ]]; then
+    rm -rf "${APP_DATA_DIR:?}/${sample_dir}"
+    cp -R "${ROOT_DIR}/${sample_dir}" "${APP_DATA_DIR}/${sample_dir}"
+  fi
+done
+
 echo "Built app: ${APP_PATH}"
 echo "Double-click in Finder, or run: ${APP_PATH}/Contents/MacOS/${APP_NAME}"
