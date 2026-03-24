@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 public class InquisitorSwingUI extends JFrame {
     private static final String DEFAULT_PROFILES_FILE = "courses.properties";
+    private static final String ABOUT_VERSION = "Build 2026-03-24 16:55 CET";
 
     private final DefaultComboBoxModel<CourseProfile> courseModel = new DefaultComboBoxModel<>();
     private final JComboBox<CourseProfile> courseCombo = new JComboBox<>(courseModel);
@@ -117,6 +118,8 @@ public class InquisitorSwingUI extends JFrame {
         saveCourse.setActionCommand("saveCourse");
         JButton chooseProfile = new JButton("Choose Profile");
         chooseProfile.setActionCommand("chooseProfile");
+        JButton aboutButton = new JButton("About");
+        aboutButton.setActionCommand("about");
 
         c.gridx = 2; c.weightx = 0; c.fill = GridBagConstraints.NONE;
         course.add(addCourse, c);
@@ -152,6 +155,8 @@ public class InquisitorSwingUI extends JFrame {
 
         c.gridx = 2; c.fill = GridBagConstraints.NONE; c.weightx = 0;
         course.add(chooseProfile, c);
+        c.gridx = 3;
+        course.add(aboutButton, c);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         actions.add(compilePdfBox);
@@ -172,6 +177,7 @@ public class InquisitorSwingUI extends JFrame {
         root.putClientProperty("removeCourse", removeCourse);
         root.putClientProperty("saveCourse", saveCourse);
         root.putClientProperty("chooseProfile", chooseProfile);
+        root.putClientProperty("about", aboutButton);
         root.putClientProperty("browsePath", browse);
         root.putClientProperty("refreshQa", refresh);
 
@@ -197,6 +203,7 @@ public class InquisitorSwingUI extends JFrame {
         JButton removeCourse = (JButton) topPanel.getClientProperty("removeCourse");
         JButton saveCourse = (JButton) topPanel.getClientProperty("saveCourse");
         JButton chooseProfile = (JButton) topPanel.getClientProperty("chooseProfile");
+        JButton aboutButton = (JButton) topPanel.getClientProperty("about");
         JButton browsePath = (JButton) topPanel.getClientProperty("browsePath");
         JButton refreshQa = (JButton) topPanel.getClientProperty("refreshQa");
 
@@ -208,6 +215,7 @@ public class InquisitorSwingUI extends JFrame {
             appendLog("Saved course profiles to " + profilesFilePath);
         });
         chooseProfile.addActionListener(this::onChooseProfile);
+        aboutButton.addActionListener(this::onAbout);
 
         browsePath.addActionListener(this::onBrowsePath);
         refreshQa.addActionListener(e -> refreshQaPanel());
@@ -381,6 +389,13 @@ public class InquisitorSwingUI extends JFrame {
             appendLog("Loaded " + loaded.size() + " course profile(s) from " + profilesFilePath);
         }
         applyLoadedProfiles(loaded);
+    }
+
+    private void onAbout(ActionEvent e) {
+        String message = "Author: Davide Patti\n"
+                + "Version: " + ABOUT_VERSION + "\n"
+                + "Email: xedivad@gmail.com";
+        JOptionPane.showMessageDialog(this, message, "About Inquisitor", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void applyLoadedProfiles(List<CourseProfile> loaded) {
