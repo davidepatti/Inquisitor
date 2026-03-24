@@ -702,39 +702,78 @@ public class Inquisitor {
     private static List<Question> readQuestionsFromFile(String filePath) throws IOException {
         List<Question> questions = new ArrayList<>();
         List<String> lines = Files.readAllLines(Paths.get(filePath));
-        Iterator<String> iterator = lines.iterator();
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (!line.startsWith("[Q]")) {
+                continue;
+            }
 
-        while (iterator.hasNext()) {
-            String line = iterator.next().trim();
-            if (line.startsWith("[Q]") && line.endsWith("[/Q]")) {
-                // Extract question text
-                String questionText = extractQuestionText(line);
-                List<String> answers = new ArrayList<>();
-                String correctAnswerStr = null;
+            String questionText;
+            int inlineClose = line.indexOf("[/Q]");
+            if (inlineClose >= 0) {
+                String inlineQuestion = line.substring(3, inlineClose).trim();
+                questionText = escapeLatex(inlineQuestion);
+            } else {
+                StringBuilder questionBuilder = new StringBuilder();
+                String firstPart = line.substring(3).trim();
+                if (!firstPart.isEmpty()) {
+                    questionBuilder.append(firstPart);
+                }
 
-                // Read the next 4 lines as answers
-                for (int i = 0; i < 4; i++) {
-                    if (iterator.hasNext()) {
-                        String answerLine = iterator.next().trim();
-                        // Check if the answer is correct (starts with '*')
-                        if (i == 0 && answerLine.startsWith("*")) {
-                            correctAnswerStr = answerLine.substring(1).trim();
-                            answers.add(correctAnswerStr);
-                        } else {
-                            answers.add(answerLine);
+                boolean foundClose = false;
+                while (++i < lines.size()) {
+                    String qLine = lines.get(i).trim();
+                    int closeIdx = qLine.indexOf("[/Q]");
+                    if (closeIdx >= 0) {
+                        String beforeClose = qLine.substring(0, closeIdx).trim();
+                        if (!beforeClose.isEmpty()) {
+                            if (questionBuilder.length() > 0) {
+                                questionBuilder.append(' ');
+                            }
+                            questionBuilder.append(beforeClose);
                         }
-                    } else {
-                        throw new IOException("Unexpected end of file while reading answers for question: " + questionText);
+                        foundClose = true;
+                        break;
+                    }
+                    if (!qLine.isEmpty()) {
+                        if (questionBuilder.length() > 0) {
+                            questionBuilder.append(' ');
+                        }
+                        questionBuilder.append(qLine);
                     }
                 }
 
-                if (correctAnswerStr == null) {
-                    throw new IOException("No correct answer found for question: " + questionText);
+                if (!foundClose) {
+                    throw new IOException("Missing [/Q] for question in file: " + filePath);
                 }
-
-                // Initially, correctAnswerIndex is set to 0 (will be updated after shuffling)
-                questions.add(new Question(questionText, answers, 0));
+                questionText = escapeLatex(questionBuilder.toString());
             }
+
+            List<String> answers = new ArrayList<>();
+            String correctAnswerStr = null;
+            for (int answerIdx = 0; answerIdx < 4; answerIdx++) {
+                i++;
+                while (i < lines.size() && lines.get(i).trim().isEmpty()) {
+                    i++;
+                }
+                if (i >= lines.size()) {
+                    throw new IOException("Unexpected end of file while reading answers for question: " + questionText);
+                }
+                String answerLine = lines.get(i).trim();
+                if (answerIdx == 0 && answerLine.startsWith("*")) {
+                    correctAnswerStr = answerLine.substring(1).trim();
+                    answers.add(correctAnswerStr);
+                } else {
+                    answers.add(answerLine);
+                }
+            }
+
+            if (correctAnswerStr == null) {
+                throw new IOException("No correct answer found for question: " + questionText);
+            }
+
+            // Initially, correctAnswerIndex is set to 0 (will be updated after shuffling)
+            questions.add(new Question(questionText, answers, 0));
         }
 
         return questions;

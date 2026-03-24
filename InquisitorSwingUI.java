@@ -14,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class InquisitorSwingUI extends JFrame {
-    private static final String PROFILES_FILE = "courses.properties";
+    private static final String DEFAULT_PROFILES_FILE = "courses.properties";
 
     private final DefaultComboBoxModel<CourseProfile> courseModel = new DefaultComboBoxModel<>();
     private final JComboBox<CourseProfile> courseCombo = new JComboBox<>(courseModel);
@@ -26,6 +26,7 @@ public class InquisitorSwingUI extends JFrame {
     private final JSpinner studentsSpinner = new JSpinner(new SpinnerNumberModel(120, 1, 1000000, 1));
 
     private final JTextField basePathField = new JTextField(22);
+    private final JTextField profilesFileField = new JTextField(22);
     private final JPanel qaPanel = new JPanel(new GridBagLayout());
     private final JTextArea logArea = new JTextArea(12, 56);
     private final JCheckBox compilePdfBox = new JCheckBox("Compile PDF with pdflatex (2 passes)", true);
@@ -37,6 +38,7 @@ public class InquisitorSwingUI extends JFrame {
     private CourseProfile currentCourse;
     private boolean suppressCourseEvents = false;
     private Path lastGeneratedPdf;
+    private Path profilesFilePath = Paths.get(DEFAULT_PROFILES_FILE);
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -113,6 +115,8 @@ public class InquisitorSwingUI extends JFrame {
         removeCourse.setActionCommand("removeCourse");
         JButton saveCourse = new JButton("Save Course");
         saveCourse.setActionCommand("saveCourse");
+        JButton chooseProfile = new JButton("Choose Profile");
+        chooseProfile.setActionCommand("chooseProfile");
 
         c.gridx = 2; c.weightx = 0; c.fill = GridBagConstraints.NONE;
         course.add(addCourse, c);
@@ -137,6 +141,17 @@ public class InquisitorSwingUI extends JFrame {
         c.gridx = 3;
         c.gridwidth = 2;
         course.add(refresh, c);
+        c.gridwidth = 1;
+
+        c.gridx = 0; c.gridy = 2;
+        course.add(new JLabel("Profiles file"), c);
+
+        profilesFileField.setEditable(false);
+        c.gridx = 1; c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1;
+        course.add(profilesFileField, c);
+
+        c.gridx = 2; c.fill = GridBagConstraints.NONE; c.weightx = 0;
+        course.add(chooseProfile, c);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         actions.add(compilePdfBox);
@@ -156,6 +171,7 @@ public class InquisitorSwingUI extends JFrame {
         root.putClientProperty("addCourse", addCourse);
         root.putClientProperty("removeCourse", removeCourse);
         root.putClientProperty("saveCourse", saveCourse);
+        root.putClientProperty("chooseProfile", chooseProfile);
         root.putClientProperty("browsePath", browse);
         root.putClientProperty("refreshQa", refresh);
 
@@ -180,6 +196,7 @@ public class InquisitorSwingUI extends JFrame {
         JButton addCourse = (JButton) topPanel.getClientProperty("addCourse");
         JButton removeCourse = (JButton) topPanel.getClientProperty("removeCourse");
         JButton saveCourse = (JButton) topPanel.getClientProperty("saveCourse");
+        JButton chooseProfile = (JButton) topPanel.getClientProperty("chooseProfile");
         JButton browsePath = (JButton) topPanel.getClientProperty("browsePath");
         JButton refreshQa = (JButton) topPanel.getClientProperty("refreshQa");
 
@@ -188,8 +205,9 @@ public class InquisitorSwingUI extends JFrame {
         saveCourse.addActionListener(e -> {
             saveCurrentCourseFromUI();
             saveProfiles();
-            appendLog("Saved course profiles to " + PROFILES_FILE);
+            appendLog("Saved course profiles to " + profilesFilePath);
         });
+        chooseProfile.addActionListener(this::onChooseProfile);
 
         browsePath.addActionListener(this::onBrowsePath);
         refreshQa.addActionListener(e -> refreshQaPanel());
@@ -223,6 +241,9 @@ public class InquisitorSwingUI extends JFrame {
     }
 
     private void loadInitialData() {
+        profilesFileField.setText(profilesFilePath.toString());
+        profilesFileField.setToolTipText(profilesFilePath.toAbsolutePath().toString());
+
         ScriptDefaults defaults = ScriptDefaults.load();
 
         if (defaults.heading != null && !defaults.heading.isBlank()) {
@@ -250,19 +271,7 @@ public class InquisitorSwingUI extends JFrame {
                 loaded.add(new CourseProfile("Default", "./questions"));
             }
         }
-
-        suppressCourseEvents = true;
-        for (CourseProfile c : loaded) {
-            courseModel.addElement(c);
-        }
-        if (courseModel.getSize() > 0) {
-            courseCombo.setSelectedIndex(0);
-            currentCourse = courseModel.getElementAt(0);
-            basePathField.setText(currentCourse.basePath);
-            refreshQaPanel();
-        }
-        suppressCourseEvents = false;
-        refreshPdfButtonState();
+        applyLoadedProfiles(loaded);
     }
 
     private void onCourseChanged() {
@@ -334,6 +343,68 @@ public class InquisitorSwingUI extends JFrame {
             basePathField.setText(chooser.getSelectedFile().getPath());
             refreshQaPanel();
         }
+    }
+
+    private void onChooseProfile(ActionEvent e) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select course profiles properties file");
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        File workingDir = new File(System.getProperty("user.dir"));
+        if (workingDir.isDirectory()) {
+            chooser.setCurrentDirectory(workingDir);
+        }
+        chooser.setSelectedFile(new File(workingDir, profilesFilePath.getFileName().toString()));
+
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        Path selected = chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+        if (!Files.isRegularFile(selected)) {
+            JOptionPane.showMessageDialog(this, "Profile file not found: " + selected, "Choose Profile", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        saveCurrentCourseFromUI();
+        saveProfiles();
+
+        profilesFilePath = selected;
+        profilesFileField.setText(profilesFilePath.toString());
+        profilesFileField.setToolTipText(profilesFilePath.toString());
+
+        List<CourseProfile> loaded = loadProfiles();
+        if (loaded.isEmpty()) {
+            loaded.add(new CourseProfile("Default", "./questions"));
+            appendLog("No courses found in " + profilesFilePath + ". Loaded fallback Default profile.");
+        } else {
+            appendLog("Loaded " + loaded.size() + " course profile(s) from " + profilesFilePath);
+        }
+        applyLoadedProfiles(loaded);
+    }
+
+    private void applyLoadedProfiles(List<CourseProfile> loaded) {
+        suppressCourseEvents = true;
+        courseModel.removeAllElements();
+        for (CourseProfile c : loaded) {
+            courseModel.addElement(c);
+        }
+        if (courseModel.getSize() > 0) {
+            courseCombo.setSelectedIndex(0);
+            currentCourse = courseModel.getElementAt(0);
+            basePathField.setText(currentCourse.basePath);
+            refreshQaPanel();
+        } else {
+            currentCourse = null;
+            basePathField.setText("");
+            qaPanel.removeAll();
+            qaPanel.revalidate();
+            qaPanel.repaint();
+            refreshTotalQuestionsLabel();
+            refreshPdfButtonState();
+        }
+        suppressCourseEvents = false;
+        refreshPdfButtonState();
     }
 
     private void refreshQaPanel() {
@@ -432,10 +503,23 @@ public class InquisitorSwingUI extends JFrame {
         int count = 0;
         try (BufferedReader reader = Files.newBufferedReader(qaFile)) {
             String line;
+            boolean inQuestionBlock = false;
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
-                if (trimmed.startsWith("[Q]") && trimmed.endsWith("[/Q]")) {
+                int openIdx = trimmed.indexOf("[Q]");
+                int closeIdx = trimmed.indexOf("[/Q]");
+
+                if (!inQuestionBlock) {
+                    if (openIdx >= 0) {
+                        if (closeIdx >= 0 && closeIdx > openIdx) {
+                            count++;
+                        } else {
+                            inQuestionBlock = true;
+                        }
+                    }
+                } else if (closeIdx >= 0) {
                     count++;
+                    inQuestionBlock = false;
                 }
             }
         } catch (IOException ignored) {
@@ -713,16 +797,17 @@ public class InquisitorSwingUI extends JFrame {
     }
 
     private List<CourseProfile> loadProfiles() {
-        Path path = Paths.get(PROFILES_FILE);
+        Path path = profilesFilePath;
         if (!Files.exists(path)) {
             return new ArrayList<>();
         }
+        Path profilesDir = path.toAbsolutePath().normalize().getParent();
 
         Properties props = new Properties();
         try (InputStream in = Files.newInputStream(path)) {
             props.load(in);
         } catch (IOException ex) {
-            appendLog("Failed to load " + PROFILES_FILE + ": " + ex.getMessage());
+            appendLog("Failed to load " + path + ": " + ex.getMessage());
             return new ArrayList<>();
         }
 
@@ -745,7 +830,12 @@ public class InquisitorSwingUI extends JFrame {
                 continue;
             }
 
-            CourseProfile profile = new CourseProfile(name, basePath);
+            Path resolvedBasePath = Paths.get(basePath);
+            if (!resolvedBasePath.isAbsolute() && profilesDir != null) {
+                resolvedBasePath = profilesDir.resolve(resolvedBasePath).normalize();
+            }
+
+            CourseProfile profile = new CourseProfile(name, resolvedBasePath.toString());
             parseCounts(props.getProperty(prefix + "counts", ""), profile.questionCounts);
             result.add(profile);
         }
@@ -772,10 +862,19 @@ public class InquisitorSwingUI extends JFrame {
 
         props.setProperty("courses", String.join(",", ids));
 
-        try (OutputStream out = Files.newOutputStream(Paths.get(PROFILES_FILE))) {
+        try {
+            if (profilesFilePath.getParent() != null) {
+                Files.createDirectories(profilesFilePath.getParent());
+            }
+        } catch (IOException ex) {
+            appendLog("Failed to prepare directory for " + profilesFilePath + ": " + ex.getMessage());
+            return;
+        }
+
+        try (OutputStream out = Files.newOutputStream(profilesFilePath)) {
             props.store(out, "Inquisitor course profiles");
         } catch (IOException ex) {
-            appendLog("Failed to save " + PROFILES_FILE + ": " + ex.getMessage());
+            appendLog("Failed to save " + profilesFilePath + ": " + ex.getMessage());
         }
     }
 
