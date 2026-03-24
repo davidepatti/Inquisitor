@@ -1,14 +1,20 @@
 # Inquisitor
 
-## macOS launcher
+![Inquisitor UI](docs/images/inquisitor-ui.png)
 
-Build a self-contained `.app` (bundled runtime):
+## Requirements
+
+- JDK 17+ (`javac`, `jar`, `jpackage`)
+
+## macOS
+
+Build a self-contained `.app`:
 
 ```bash
 ./scripts/build_macos_app.sh
 ```
 
-This creates:
+Generated app:
 
 - `dist/Inquisitor.app`
 
@@ -18,20 +24,64 @@ Run from shell:
 ./scripts/launch_inquisitor.sh
 ```
 
-Or auto-build + run:
+Open from Finder:
+
+```bash
+./scripts/launch_inquisitor.sh --open
+```
+
+Auto-build + run:
 
 ```bash
 ./scripts/inquisitor
 ```
 
-Open as a clickable app icon from Finder:
-
-```bash
-open dist/Inquisitor.app
-```
-
-Optional env vars:
+Supported env vars (`build_macos_app.sh`):
 
 - `APP_NAME` (default: `Inquisitor`)
+- `MAIN_CLASS` (default: `InquisitorSwingUI`)
+- `JAR_NAME` (default: `Inquisitor.jar`)
 - `DIST_DIR` (default: `./dist`)
-- `ICON_PATH` (default: `./assets/Inquisitor.icns` if present)
+- `ICON_PATH` (default: `./assets/Inquisitor.icns`, if present)
+
+Supported env vars (`launch_inquisitor.sh`):
+
+- `APP_NAME` (default: `Inquisitor`)
+- `APP_PATH` (default: `./dist/<APP_NAME>.app`)
+
+## Ubuntu/Linux
+
+Build Linux app image (default):
+
+```bash
+./scripts/build_linux_app.sh
+```
+
+Run it:
+
+```bash
+./dist/Inquisitor/bin/Inquisitor
+```
+
+Build a `.deb` package instead:
+
+```bash
+PACKAGE_TYPE=deb ./scripts/build_linux_app.sh
+```
+
+Supported env vars (`build_linux_app.sh`):
+
+- `APP_NAME` (default: `Inquisitor`)
+- `MAIN_CLASS` (default: `InquisitorSwingUI`)
+- `JAR_NAME` (default: `Inquisitor.jar`)
+- `DIST_DIR` (default: `./dist`)
+- `ICON_PATH` (default: `./assets/Inquisitor.png`, if present)
+- `PACKAGE_TYPE` (default: `app-image`, optional `deb`)
+
+## Default Course Data
+
+Packaged app builds include:
+
+- `courses.properties`
+- `Wallace_questions/`
+- `Lynch_questions/`
