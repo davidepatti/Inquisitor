@@ -27,6 +27,7 @@ public class InquisitorSwingUI extends JFrame {
     private final JSpinner studentsSpinner = new JSpinner(new SpinnerNumberModel(120, 1, 1000000, 1));
 
     private final JTextField basePathField = new JTextField(22);
+    private final JTextField profileNameField = new JTextField(22);
     private final JTextField profilesFileField = new JTextField(22);
     private final JPanel qaPanel = new JPanel(new GridBagLayout());
     private final JTextArea logArea = new JTextArea(12, 56);
@@ -87,6 +88,25 @@ public class InquisitorSwingUI extends JFrame {
         return null;
     }
 
+    private static boolean isMacOs() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
+    private static Path findExistingDirectory(Path path) {
+        if (path == null) {
+            return null;
+        }
+
+        Path current = path.toAbsolutePath().normalize();
+        if (Files.isRegularFile(current)) {
+            current = current.getParent();
+        }
+        while (current != null && !Files.isDirectory(current)) {
+            current = current.getParent();
+        }
+        return current;
+    }
+
     private InquisitorSwingUI() {
         super("Inquisitor Exam Generator");
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -122,7 +142,7 @@ public class InquisitorSwingUI extends JFrame {
         root.setBorder(new EmptyBorder(8, 8, 0, 8));
 
         JPanel global = new JPanel(new GridBagLayout());
-        global.setBorder(BorderFactory.createTitledBorder("Global Parameters"));
+        global.setBorder(BorderFactory.createTitledBorder("Course Parameters"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
@@ -149,10 +169,10 @@ public class InquisitorSwingUI extends JFrame {
         addCourse.setActionCommand("addCourse");
         JButton removeCourse = new JButton("Remove Course");
         removeCourse.setActionCommand("removeCourse");
-        JButton saveCourse = new JButton("Save Course");
-        saveCourse.setActionCommand("saveCourse");
-        JButton chooseProfile = new JButton("Choose Profile");
-        chooseProfile.setActionCommand("chooseProfile");
+        JButton saveProfile = new JButton("Save Profile");
+        saveProfile.setActionCommand("saveProfile");
+        JButton loadProfile = new JButton("Load Profile");
+        loadProfile.setActionCommand("loadProfile");
         JButton aboutButton = new JButton("About");
         aboutButton.setActionCommand("about");
 
@@ -161,7 +181,7 @@ public class InquisitorSwingUI extends JFrame {
         c.gridx = 3;
         course.add(removeCourse, c);
         c.gridx = 4;
-        course.add(saveCourse, c);
+        course.add(aboutButton, c);
 
         c.gridx = 0; c.gridy = 1;
         course.add(new JLabel("Questions Folder (--base_path)"), c);
@@ -182,16 +202,24 @@ public class InquisitorSwingUI extends JFrame {
         c.gridwidth = 1;
 
         c.gridx = 0; c.gridy = 2;
-        course.add(new JLabel("Profiles file"), c);
+        course.add(new JLabel("Profile name"), c);
+
+        c.gridx = 1; c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1;
+        course.add(profileNameField, c);
+
+        c.gridx = 2; c.fill = GridBagConstraints.NONE; c.weightx = 0;
+        course.add(saveProfile, c);
+        c.gridx = 3;
+        course.add(loadProfile, c);
+
+        c.gridx = 0; c.gridy = 3;
+        course.add(new JLabel("Profile file"), c);
 
         profilesFileField.setEditable(false);
         c.gridx = 1; c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1;
+        c.gridwidth = 3;
         course.add(profilesFileField, c);
-
-        c.gridx = 2; c.fill = GridBagConstraints.NONE; c.weightx = 0;
-        course.add(chooseProfile, c);
-        c.gridx = 3;
-        course.add(aboutButton, c);
+        c.gridwidth = 1;
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         actions.add(compilePdfBox);
@@ -210,8 +238,8 @@ public class InquisitorSwingUI extends JFrame {
 
         root.putClientProperty("addCourse", addCourse);
         root.putClientProperty("removeCourse", removeCourse);
-        root.putClientProperty("saveCourse", saveCourse);
-        root.putClientProperty("chooseProfile", chooseProfile);
+        root.putClientProperty("saveProfile", saveProfile);
+        root.putClientProperty("loadProfile", loadProfile);
         root.putClientProperty("about", aboutButton);
         root.putClientProperty("browsePath", browse);
         root.putClientProperty("refreshQa", refresh);
@@ -236,20 +264,16 @@ public class InquisitorSwingUI extends JFrame {
         JPanel topPanel = (JPanel) getContentPane().getComponent(0);
         JButton addCourse = (JButton) topPanel.getClientProperty("addCourse");
         JButton removeCourse = (JButton) topPanel.getClientProperty("removeCourse");
-        JButton saveCourse = (JButton) topPanel.getClientProperty("saveCourse");
-        JButton chooseProfile = (JButton) topPanel.getClientProperty("chooseProfile");
+        JButton saveProfile = (JButton) topPanel.getClientProperty("saveProfile");
+        JButton loadProfile = (JButton) topPanel.getClientProperty("loadProfile");
         JButton aboutButton = (JButton) topPanel.getClientProperty("about");
         JButton browsePath = (JButton) topPanel.getClientProperty("browsePath");
         JButton refreshQa = (JButton) topPanel.getClientProperty("refreshQa");
 
         addCourse.addActionListener(this::onAddCourse);
         removeCourse.addActionListener(this::onRemoveCourse);
-        saveCourse.addActionListener(e -> {
-            saveCurrentCourseFromUI();
-            saveProfiles();
-            appendLog("Saved course profiles to " + profilesFilePath);
-        });
-        chooseProfile.addActionListener(this::onChooseProfile);
+        saveProfile.addActionListener(this::onSaveProfile);
+        loadProfile.addActionListener(this::onLoadProfile);
         aboutButton.addActionListener(this::onAbout);
 
         browsePath.addActionListener(this::onBrowsePath);
@@ -284,37 +308,21 @@ public class InquisitorSwingUI extends JFrame {
     }
 
     private void loadInitialData() {
-        profilesFileField.setText(profilesFilePath.toString());
-        profilesFileField.setToolTipText(profilesFilePath.toAbsolutePath().toString());
+        setProfileFilePath(profilesFilePath);
+        profileNameField.setText(deriveProfileNameFromPath(profilesFilePath));
 
         ScriptDefaults defaults = ScriptDefaults.load();
 
-        if (defaults.heading != null && !defaults.heading.isBlank()) {
-            headingField.setText(defaults.heading);
+        SavedProfile loaded = loadProfile(profilesFilePath);
+        if (loaded == null) {
+            loaded = createFallbackProfile(defaults);
+        } else if (loaded.courses.isEmpty()) {
+            appendLog("No courses found in " + profilesFilePath + ". Loaded fallback Default course.");
+            loaded = mergeWithFallbackCourse(loaded, defaults);
+        } else {
+            appendLog("Loaded profile '" + loaded.name + "' from " + profilesFilePath);
         }
-        if (defaults.subheading != null && !defaults.subheading.isBlank()) {
-            subheadingField.setText(defaults.subheading);
-        }
-        if (defaults.seed != null) {
-            seedSpinner.setValue(defaults.seed);
-        }
-        if (defaults.totalExams != null) {
-            examsSpinner.setValue(defaults.totalExams);
-        }
-        if (defaults.totalStudents != null) {
-            studentsSpinner.setValue(defaults.totalStudents);
-        }
-
-        List<CourseProfile> loaded = loadProfiles();
-        if (loaded.isEmpty()) {
-            if (defaults.toCourseProfile() != null) {
-                loaded.add(defaults.toCourseProfile());
-            }
-            if (loaded.isEmpty()) {
-                loaded.add(new CourseProfile("Default", "./questions"));
-            }
-        }
-        applyLoadedProfiles(loaded);
+        applyLoadedProfile(loaded);
     }
 
     private void onCourseChanged() {
@@ -322,8 +330,7 @@ public class InquisitorSwingUI extends JFrame {
         CourseProfile selected = (CourseProfile) courseCombo.getSelectedItem();
         currentCourse = selected;
         if (selected != null) {
-            basePathField.setText(selected.basePath);
-            refreshQaPanel();
+            applyCourseToUI(selected);
         }
     }
 
@@ -333,19 +340,20 @@ public class InquisitorSwingUI extends JFrame {
             return;
         }
 
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select questions folder for " + name);
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setCurrentDirectory(new File("."));
-        int result = chooser.showOpenDialog(this);
-        if (result != JFileChooser.APPROVE_OPTION) {
+        saveCurrentCourseFromUI();
+
+        Path selectedDirectory = chooseDirectory("Select questions folder for " + name, Paths.get("."));
+        if (selectedDirectory == null) {
             return;
         }
 
-        CourseProfile profile = new CourseProfile(name.trim(), chooser.getSelectedFile().getPath());
+        CourseProfile profile = new CourseProfile(name.trim(), selectedDirectory.toString());
+        profile.heading = headingField.getText().trim();
+        profile.subheading = subheadingField.getText().trim();
+        profile.totalExams = ((Number) examsSpinner.getValue()).intValue();
+        profile.totalStudents = ((Number) studentsSpinner.getValue()).intValue();
         courseModel.addElement(profile);
         courseCombo.setSelectedItem(profile);
-        saveProfiles();
     }
 
     private void onRemoveCourse(ActionEvent e) {
@@ -366,77 +374,115 @@ public class InquisitorSwingUI extends JFrame {
             courseCombo.setSelectedIndex(0);
         } else {
             currentCourse = null;
+            headingField.setText("");
+            subheadingField.setText("");
+            basePathField.setText("");
+            examsSpinner.setValue(8);
+            studentsSpinner.setValue(120);
             qaPanel.removeAll();
             qaPanel.revalidate();
             qaPanel.repaint();
+            refreshTotalQuestionsLabel();
+            refreshPdfButtonState();
         }
-        saveProfiles();
     }
 
     private void onBrowsePath(ActionEvent e) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select questions folder");
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        if (!basePathField.getText().isBlank()) {
-            chooser.setCurrentDirectory(new File(basePathField.getText()));
+        Path initialDirectory = basePathField.getText().isBlank() ? null : Paths.get(basePathField.getText().trim());
+        Path selectedDirectory = chooseDirectory("Select questions folder", initialDirectory);
+        if (selectedDirectory == null) {
+            return;
         }
 
-        int result = chooser.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            basePathField.setText(chooser.getSelectedFile().getPath());
-            refreshQaPanel();
-        }
+        basePathField.setText(selectedDirectory.toString());
+        refreshQaPanel();
     }
 
-    private void onChooseProfile(ActionEvent e) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select course profiles properties file");
-        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        File suggestedDir = null;
+    private void onSaveProfile(ActionEvent e) {
+        SavedProfile profile = captureCurrentProfile();
+        if (profile.name.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Profile name cannot be empty.", "Save Profile", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String suggestedFileName = suggestedProfileFileName(profile.name);
+
         Path currentParent = profilesFilePath.toAbsolutePath().normalize().getParent();
-        if (currentParent != null) {
-            File parentFile = currentParent.toFile();
-            if (parentFile.isDirectory()) {
-                suggestedDir = parentFile;
-            }
-        }
-        if (suggestedDir == null) {
-            File workingDir = new File(System.getProperty("user.dir"));
-            if (workingDir.isDirectory()) {
-                suggestedDir = workingDir;
-            }
-        }
-        if (suggestedDir != null) {
-            chooser.setCurrentDirectory(suggestedDir);
-            chooser.setSelectedFile(new File(suggestedDir, profilesFilePath.getFileName().toString()));
+        if (currentParent == null) {
+            currentParent = Paths.get(System.getProperty("user.dir"));
         }
 
-        int result = chooser.showOpenDialog(this);
-        if (result != JFileChooser.APPROVE_OPTION) {
+        Path selected = chooseSaveFile(
+                "Save profile",
+                currentParent,
+                suggestedFileName
+        );
+        if (selected == null) {
             return;
         }
 
-        Path selected = chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+        selected = ensureProfileFileExtension(selected);
+        Path normalizedSelected = selected.toAbsolutePath().normalize();
+        Path normalizedCurrent = (profilesFilePath == null) ? null : profilesFilePath.toAbsolutePath().normalize();
+        if (Files.exists(normalizedSelected) && !normalizedSelected.equals(normalizedCurrent)) {
+            int answer = JOptionPane.showConfirmDialog(
+                    this,
+                    "Overwrite existing file?\n" + normalizedSelected,
+                    "Save Profile",
+                    JOptionPane.YES_NO_OPTION
+            );
+            if (answer != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        if (!saveProfile(profile, normalizedSelected)) {
+            return;
+        }
+
+        setProfileFilePath(normalizedSelected);
+        profileNameField.setText(profile.name);
+        appendLog("Saved profile '" + profile.name + "' to " + normalizedSelected);
+    }
+
+    private void onLoadProfile(ActionEvent e) {
+        Path currentParent = profilesFilePath.toAbsolutePath().normalize().getParent();
+        if (currentParent == null) {
+            currentParent = Paths.get(System.getProperty("user.dir"));
+        }
+
+        String suggestedFileName = (profilesFilePath != null && profilesFilePath.getFileName() != null)
+                ? profilesFilePath.getFileName().toString()
+                : suggestedProfileFileName(profileNameField.getText().trim());
+
+        Path selected = chooseFile(
+                "Load profile",
+                currentParent,
+                suggestedFileName
+        );
+        if (selected == null) {
+            return;
+        }
+
         if (!Files.isRegularFile(selected)) {
-            JOptionPane.showMessageDialog(this, "Profile file not found: " + selected, "Choose Profile", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Profile file not found: " + selected, "Load Profile", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        saveCurrentCourseFromUI();
-        saveProfiles();
-
-        profilesFilePath = selected;
-        profilesFileField.setText(profilesFilePath.toString());
-        profilesFileField.setToolTipText(profilesFilePath.toString());
-
-        List<CourseProfile> loaded = loadProfiles();
-        if (loaded.isEmpty()) {
-            loaded.add(new CourseProfile("Default", "./questions"));
-            appendLog("No courses found in " + profilesFilePath + ". Loaded fallback Default profile.");
-        } else {
-            appendLog("Loaded " + loaded.size() + " course profile(s) from " + profilesFilePath);
+        SavedProfile loaded = loadProfile(selected);
+        if (loaded == null) {
+            JOptionPane.showMessageDialog(this, "Failed to load profile: " + selected, "Load Profile", JOptionPane.ERROR_MESSAGE);
+            return;
         }
-        applyLoadedProfiles(loaded);
+        setProfileFilePath(selected);
+        if (loaded.courses.isEmpty()) {
+            loaded = mergeWithFallbackCourse(loaded, ScriptDefaults.load());
+            appendLog("No courses found in " + selected + ". Loaded fallback Default course.");
+        } else {
+            appendLog("Loaded profile '" + loaded.name + "' from " + selected);
+        }
+
+        applyLoadedProfile(loaded);
     }
 
     private void onAbout(ActionEvent e) {
@@ -446,20 +492,32 @@ public class InquisitorSwingUI extends JFrame {
         JOptionPane.showMessageDialog(this, message, "About Inquisitor", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void applyLoadedProfiles(List<CourseProfile> loaded) {
+    private void applyLoadedProfile(SavedProfile loaded) {
         suppressCourseEvents = true;
+        profileNameField.setText((loaded.name == null || loaded.name.isBlank())
+                ? deriveProfileNameFromPath(profilesFilePath)
+                : loaded.name);
+        if (loaded.compilePdf != null) {
+            compilePdfBox.setSelected(loaded.compilePdf);
+        }
+
         courseModel.removeAllElements();
-        for (CourseProfile c : loaded) {
+        for (CourseProfile c : loaded.courses) {
             courseModel.addElement(c);
         }
         if (courseModel.getSize() > 0) {
-            courseCombo.setSelectedIndex(0);
-            currentCourse = courseModel.getElementAt(0);
-            basePathField.setText(currentCourse.basePath);
-            refreshQaPanel();
+            int selectedIndex = (loaded.selectedCourseIndex == null) ? 0 : loaded.selectedCourseIndex;
+            selectedIndex = Math.max(0, Math.min(selectedIndex, courseModel.getSize() - 1));
+            courseCombo.setSelectedIndex(selectedIndex);
+            currentCourse = courseModel.getElementAt(selectedIndex);
+            applyCourseToUI(currentCourse);
         } else {
             currentCourse = null;
+            headingField.setText("");
+            subheadingField.setText("");
             basePathField.setText("");
+            examsSpinner.setValue(8);
+            studentsSpinner.setValue(120);
             qaPanel.removeAll();
             qaPanel.revalidate();
             qaPanel.repaint();
@@ -486,10 +544,7 @@ public class InquisitorSwingUI extends JFrame {
 
         List<Path> qaFiles;
         try {
-            qaFiles = Files.list(basePath)
-                    .filter(p -> p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".qa"))
-                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                    .toList();
+            qaFiles = listQaFiles(basePath);
         } catch (IOException ex) {
             addQaMessage("Failed to read .qa files: " + ex.getMessage());
             qaPanel.revalidate();
@@ -554,6 +609,278 @@ public class InquisitorSwingUI extends JFrame {
         refreshPdfButtonState();
     }
 
+    private List<Path> listQaFiles(Path basePath) throws IOException {
+        List<Path> qaFiles = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(basePath,
+                entry -> Files.isRegularFile(entry)
+                        && entry.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".qa"))) {
+            for (Path entry : stream) {
+                qaFiles.add(entry);
+            }
+        }
+        qaFiles.sort(Comparator.comparing(p -> p.getFileName().toString()));
+        return qaFiles;
+    }
+
+    private Path chooseDirectory(String title, Path initialPath) {
+        Path initialDirectory = findExistingDirectory(initialPath);
+        if (isMacOs()) {
+            return chooseDirectoryWithNativeDialog(title, initialDirectory);
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(title);
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (initialDirectory != null) {
+            chooser.setCurrentDirectory(initialDirectory.toFile());
+        }
+
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION || chooser.getSelectedFile() == null) {
+            return null;
+        }
+        return chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+    }
+
+    private Path chooseDirectoryWithNativeDialog(String title, Path initialDirectory) {
+        String previous = System.getProperty("apple.awt.fileDialogForDirectories");
+        FileDialog dialog = null;
+        try {
+            System.setProperty("apple.awt.fileDialogForDirectories", "true");
+            dialog = new FileDialog(this, title, FileDialog.LOAD);
+            if (initialDirectory != null) {
+                dialog.setDirectory(initialDirectory.toString());
+            }
+            dialog.setVisible(true);
+
+            File[] selectedFiles = dialog.getFiles();
+            if (selectedFiles != null && selectedFiles.length > 0) {
+                return selectedFiles[0].toPath().toAbsolutePath().normalize();
+            }
+
+            if (dialog.getDirectory() == null) {
+                return null;
+            }
+            if (dialog.getFile() == null) {
+                return Paths.get(dialog.getDirectory()).toAbsolutePath().normalize();
+            }
+            return Paths.get(dialog.getDirectory(), dialog.getFile()).toAbsolutePath().normalize();
+        } finally {
+            if (dialog != null) {
+                dialog.dispose();
+            }
+            if (previous == null) {
+                System.clearProperty("apple.awt.fileDialogForDirectories");
+            } else {
+                System.setProperty("apple.awt.fileDialogForDirectories", previous);
+            }
+        }
+    }
+
+    private Path chooseFile(String title, Path initialPath, String suggestedFileName) {
+        Path initialDirectory = findExistingDirectory(initialPath);
+        if (isMacOs()) {
+            return chooseFileWithNativeDialog(title, initialDirectory, suggestedFileName);
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(title);
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        if (initialDirectory != null) {
+            chooser.setCurrentDirectory(initialDirectory.toFile());
+        }
+        if (suggestedFileName != null && !suggestedFileName.isBlank()) {
+            chooser.setSelectedFile(new File(
+                    initialDirectory != null ? initialDirectory.toFile() : new File("."),
+                    suggestedFileName
+            ));
+        }
+
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION || chooser.getSelectedFile() == null) {
+            return null;
+        }
+        return chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+    }
+
+    private Path chooseFileWithNativeDialog(String title, Path initialDirectory, String suggestedFileName) {
+        FileDialog dialog = new FileDialog(this, title, FileDialog.LOAD);
+        try {
+            if (initialDirectory != null) {
+                dialog.setDirectory(initialDirectory.toString());
+            }
+            if (suggestedFileName != null && !suggestedFileName.isBlank()) {
+                dialog.setFile(suggestedFileName);
+            }
+            dialog.setVisible(true);
+
+            File[] selectedFiles = dialog.getFiles();
+            if (selectedFiles == null || selectedFiles.length == 0) {
+                return null;
+            }
+            return selectedFiles[0].toPath().toAbsolutePath().normalize();
+        } finally {
+            dialog.dispose();
+        }
+    }
+
+    private Path chooseSaveFile(String title, Path initialPath, String suggestedFileName) {
+        Path initialDirectory = findExistingDirectory(initialPath);
+        if (isMacOs()) {
+            return chooseSaveFileWithNativeDialog(title, initialDirectory, suggestedFileName);
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(title);
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        if (initialDirectory != null) {
+            chooser.setCurrentDirectory(initialDirectory.toFile());
+        }
+        if (suggestedFileName != null && !suggestedFileName.isBlank()) {
+            chooser.setSelectedFile(new File(
+                    initialDirectory != null ? initialDirectory.toFile() : new File("."),
+                    suggestedFileName
+            ));
+        }
+
+        int result = chooser.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION || chooser.getSelectedFile() == null) {
+            return null;
+        }
+        return chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+    }
+
+    private Path chooseSaveFileWithNativeDialog(String title, Path initialDirectory, String suggestedFileName) {
+        FileDialog dialog = new FileDialog(this, title, FileDialog.SAVE);
+        try {
+            if (initialDirectory != null) {
+                dialog.setDirectory(initialDirectory.toString());
+            }
+            if (suggestedFileName != null && !suggestedFileName.isBlank()) {
+                dialog.setFile(suggestedFileName);
+            }
+            dialog.setVisible(true);
+
+            if (dialog.getDirectory() == null || dialog.getFile() == null) {
+                return null;
+            }
+            return Paths.get(dialog.getDirectory(), dialog.getFile()).toAbsolutePath().normalize();
+        } finally {
+            dialog.dispose();
+        }
+    }
+
+    private void setProfileFilePath(Path path) {
+        profilesFilePath = path.toAbsolutePath().normalize();
+        profilesFileField.setText(profilesFilePath.toString());
+        profilesFileField.setToolTipText(profilesFilePath.toString());
+    }
+
+    private String deriveProfileNameFromPath(Path path) {
+        if (path == null || path.getFileName() == null) {
+            return "Default";
+        }
+
+        String fileName = path.getFileName().toString().trim();
+        int dot = fileName.lastIndexOf('.');
+        if (dot > 0) {
+            fileName = fileName.substring(0, dot);
+        }
+        return fileName.isBlank() ? "Default" : fileName;
+    }
+
+    private String suggestedProfileFileName(String profileName) {
+        String sanitized = profileName == null ? "" : profileName.trim();
+        sanitized = sanitized.replaceAll("[\\\\/:*?\"<>|]+", "_");
+        sanitized = sanitized.replaceAll("\\s+", "_");
+        if (sanitized.isBlank()) {
+            sanitized = "profile";
+        }
+        if (!sanitized.toLowerCase(Locale.ROOT).endsWith(".properties")) {
+            sanitized += ".properties";
+        }
+        return sanitized;
+    }
+
+    private Path ensureProfileFileExtension(Path path) {
+        String fileName = path.getFileName() == null ? "" : path.getFileName().toString();
+        if (fileName.toLowerCase(Locale.ROOT).endsWith(".properties")) {
+            return path;
+        }
+        String updatedFileName = fileName.isBlank() ? "profile.properties" : fileName + ".properties";
+        Path parent = path.getParent();
+        return (parent == null) ? Paths.get(updatedFileName) : parent.resolve(updatedFileName);
+    }
+
+    private SavedProfile captureCurrentProfile() {
+        saveCurrentCourseFromUI();
+
+        SavedProfile profile = new SavedProfile();
+        profile.name = profileNameField.getText().trim();
+        profile.compilePdf = compilePdfBox.isSelected();
+        profile.selectedCourseIndex = Math.max(courseCombo.getSelectedIndex(), 0);
+
+        for (int i = 0; i < courseModel.getSize(); i++) {
+            profile.courses.add(copyCourseProfile(courseModel.getElementAt(i)));
+        }
+        return profile;
+    }
+
+    private SavedProfile createFallbackProfile(ScriptDefaults defaults) {
+        SavedProfile profile = new SavedProfile();
+        profile.name = deriveProfileNameFromPath(profilesFilePath);
+        profile.compilePdf = compilePdfBox.isSelected();
+        profile.selectedCourseIndex = 0;
+
+        CourseProfile imported = defaults.toCourseProfile();
+        if (imported != null) {
+            profile.courses.add(imported);
+        }
+        if (profile.courses.isEmpty()) {
+            profile.courses.add(new CourseProfile("Default", "./questions"));
+        }
+        return profile;
+    }
+
+    private SavedProfile mergeWithFallbackCourse(SavedProfile profile, ScriptDefaults defaults) {
+        if (profile.name == null || profile.name.isBlank()) {
+            profile.name = deriveProfileNameFromPath(profilesFilePath);
+        }
+        if (profile.courses.isEmpty()) {
+            CourseProfile imported = defaults.toCourseProfile();
+            if (imported != null) {
+                profile.courses.add(imported);
+            }
+        }
+        if (profile.courses.isEmpty()) {
+            profile.courses.add(new CourseProfile("Default", "./questions"));
+        }
+        if (profile.selectedCourseIndex == null) {
+            profile.selectedCourseIndex = 0;
+        }
+        return profile;
+    }
+
+    private CourseProfile copyCourseProfile(CourseProfile source) {
+        CourseProfile copy = new CourseProfile(source.name, source.basePath);
+        copy.heading = source.heading;
+        copy.subheading = source.subheading;
+        copy.totalExams = source.totalExams;
+        copy.totalStudents = source.totalStudents;
+        copy.questionCounts.putAll(source.questionCounts);
+        return copy;
+    }
+
+    private void applyCourseToUI(CourseProfile course) {
+        headingField.setText(course.heading);
+        subheadingField.setText(course.subheading);
+        examsSpinner.setValue(course.totalExams);
+        studentsSpinner.setValue(course.totalStudents);
+        basePathField.setText(course.basePath);
+        refreshQaPanel();
+    }
+
     private void addQaMessage(String text) {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -595,7 +922,11 @@ public class InquisitorSwingUI extends JFrame {
         if (currentCourse == null) {
             return;
         }
+        currentCourse.heading = headingField.getText().trim();
+        currentCourse.subheading = subheadingField.getText().trim();
         currentCourse.basePath = basePathField.getText().trim();
+        currentCourse.totalExams = ((Number) examsSpinner.getValue()).intValue();
+        currentCourse.totalStudents = ((Number) studentsSpinner.getValue()).intValue();
         currentCourse.questionCounts.clear();
         for (Map.Entry<String, JSpinner> entry : fileSpinners.entrySet()) {
             int value = (Integer) entry.getValue().getValue();
@@ -660,8 +991,6 @@ public class InquisitorSwingUI extends JFrame {
             args.add("-h2");
             args.add(subheading);
         }
-
-        saveProfiles();
 
         generateButton.setEnabled(false);
         appendLog("Running Inquisitor with course: " + currentCourse.name);
@@ -859,95 +1188,167 @@ public class InquisitorSwingUI extends JFrame {
         totalQuestionsLabel.setText("Total selected questions: " + totalSelected);
     }
 
-    private List<CourseProfile> loadProfiles() {
-        Path path = profilesFilePath;
-        if (!Files.exists(path)) {
-            return new ArrayList<>();
+    private SavedProfile loadProfile(Path path) {
+        if (path == null || !Files.exists(path)) {
+            return null;
         }
-        Path profilesDir = path.toAbsolutePath().normalize().getParent();
+        Path normalizedPath = path.toAbsolutePath().normalize();
+        Path profilesDir = normalizedPath.getParent();
 
         Properties props = new Properties();
-        try (InputStream in = Files.newInputStream(path)) {
+        try (InputStream in = Files.newInputStream(normalizedPath)) {
             props.load(in);
         } catch (IOException ex) {
-            appendLog("Failed to load " + path + ": " + ex.getMessage());
-            return new ArrayList<>();
+            appendLog("Failed to load " + normalizedPath + ": " + ex.getMessage());
+            return null;
         }
+
+        SavedProfile profile = new SavedProfile();
+        profile.name = readOptionalProperty(props, "profile.name");
+        profile.compilePdf = parseBoolean(readOptionalProperty(props, "profile.compilePdf"));
+        profile.selectedCourseIndex = parseInteger(readOptionalProperty(props, "profile.selectedCourse"));
+
+        String legacyHeading = readOptionalProperty(props, "profile.heading");
+        String legacySubheading = readOptionalProperty(props, "profile.subheading");
+        Integer legacyTotalExams = parseInteger(readOptionalProperty(props, "profile.totalExams"));
+        Integer legacyTotalStudents = parseInteger(readOptionalProperty(props, "profile.totalStudents"));
 
         String order = props.getProperty("courses", "").trim();
-        List<CourseProfile> result = new ArrayList<>();
-        if (order.isEmpty()) {
-            return result;
+        if (!order.isEmpty()) {
+            for (String id : order.split(",")) {
+                String courseId = id.trim();
+                if (courseId.isEmpty()) {
+                    continue;
+                }
+
+                String prefix = "course." + courseId + ".";
+                String name = props.getProperty(prefix + "name");
+                String basePath = props.getProperty(prefix + "path");
+                if (name == null || basePath == null) {
+                    continue;
+                }
+
+                Path resolvedBasePath;
+                try {
+                    resolvedBasePath = Paths.get(basePath);
+                } catch (Exception ex) {
+                    continue;
+                }
+                if (!resolvedBasePath.isAbsolute() && profilesDir != null) {
+                    resolvedBasePath = profilesDir.resolve(resolvedBasePath).normalize();
+                }
+
+                CourseProfile course = new CourseProfile(name, resolvedBasePath.toString());
+                course.heading = props.containsKey(prefix + "heading")
+                        ? props.getProperty(prefix + "heading", "")
+                        : (legacyHeading == null ? "" : legacyHeading);
+                course.subheading = props.containsKey(prefix + "subheading")
+                        ? props.getProperty(prefix + "subheading", "")
+                        : (legacySubheading == null ? "" : legacySubheading);
+                course.totalExams = coalesce(
+                        parseInteger(readOptionalProperty(props, prefix + "totalExams")),
+                        legacyTotalExams,
+                        8
+                );
+                course.totalStudents = coalesce(
+                        parseInteger(readOptionalProperty(props, prefix + "totalStudents")),
+                        legacyTotalStudents,
+                        120
+                );
+                parseCounts(props.getProperty(prefix + "counts", ""), course.questionCounts);
+                profile.courses.add(course);
+            }
         }
 
-        for (String id : order.split(",")) {
-            String courseId = id.trim();
-            if (courseId.isEmpty()) {
-                continue;
-            }
-
-            String prefix = "course." + courseId + ".";
-            String name = props.getProperty(prefix + "name");
-            String basePath = props.getProperty(prefix + "path");
-            if (name == null || basePath == null) {
-                continue;
-            }
-
-            Path resolvedBasePath = Paths.get(basePath);
-            if (!resolvedBasePath.isAbsolute() && profilesDir != null) {
-                resolvedBasePath = profilesDir.resolve(resolvedBasePath).normalize();
-            }
-
-            CourseProfile profile = new CourseProfile(name, resolvedBasePath.toString());
-            parseCounts(props.getProperty(prefix + "counts", ""), profile.questionCounts);
-            result.add(profile);
+        if (profile.name == null || profile.name.isBlank()) {
+            profile.name = deriveProfileNameFromPath(normalizedPath);
         }
-
-        return result;
+        return profile;
     }
 
-    private void saveProfiles() {
-        saveCurrentCourseFromUI();
-
+    private boolean saveProfile(SavedProfile profile, Path path) {
         Properties props = new Properties();
         List<String> ids = new ArrayList<>();
 
-        for (int i = 0; i < courseModel.getSize(); i++) {
-            CourseProfile profile = courseModel.getElementAt(i);
+        props.setProperty("profile.name", profile.name);
+        props.setProperty("profile.compilePdf", Boolean.toString(profile.compilePdf == null || profile.compilePdf));
+        props.setProperty("profile.selectedCourse", Integer.toString(profile.selectedCourseIndex == null ? 0 : profile.selectedCourseIndex));
+
+        for (int i = 0; i < profile.courses.size(); i++) {
+            CourseProfile course = profile.courses.get(i);
             String id = Integer.toString(i + 1);
             ids.add(id);
 
             String prefix = "course." + id + ".";
-            props.setProperty(prefix + "name", profile.name);
-            props.setProperty(prefix + "path", toStoredProfilePath(profile.basePath));
-            props.setProperty(prefix + "counts", formatCounts(profile.questionCounts));
+            props.setProperty(prefix + "name", course.name);
+            props.setProperty(prefix + "path", toStoredProfilePath(course.basePath, path));
+            props.setProperty(prefix + "heading", course.heading == null ? "" : course.heading);
+            props.setProperty(prefix + "subheading", course.subheading == null ? "" : course.subheading);
+            props.setProperty(prefix + "totalExams", Integer.toString(course.totalExams));
+            props.setProperty(prefix + "totalStudents", Integer.toString(course.totalStudents));
+            props.setProperty(prefix + "counts", formatCounts(course.questionCounts));
         }
 
         props.setProperty("courses", String.join(",", ids));
 
         try {
-            if (profilesFilePath.getParent() != null) {
-                Files.createDirectories(profilesFilePath.getParent());
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
             }
         } catch (IOException ex) {
-            appendLog("Failed to prepare directory for " + profilesFilePath + ": " + ex.getMessage());
-            return;
+            appendLog("Failed to prepare directory for " + path + ": " + ex.getMessage());
+            return false;
         }
 
-        try (OutputStream out = Files.newOutputStream(profilesFilePath)) {
-            props.store(out, "Inquisitor course profiles");
+        try (OutputStream out = Files.newOutputStream(path)) {
+            props.store(out, "Inquisitor saved profile");
+            return true;
         } catch (IOException ex) {
-            appendLog("Failed to save " + profilesFilePath + ": " + ex.getMessage());
+            appendLog("Failed to save " + path + ": " + ex.getMessage());
+            return false;
         }
     }
 
-    private String toStoredProfilePath(String basePath) {
+    private String readOptionalProperty(Properties props, String key) {
+        return props.containsKey(key) ? props.getProperty(key) : null;
+    }
+
+    private Boolean parseBoolean(String text) {
+        if (text == null) {
+            return null;
+        }
+        return Boolean.parseBoolean(text.trim());
+    }
+
+    private Integer parseInteger(String text) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Long parseLong(String text) {
+        if (text == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(text.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private String toStoredProfilePath(String basePath, Path profileFilePath) {
         String raw = (basePath == null) ? "" : basePath.trim();
         if (raw.isEmpty()) {
             return raw;
         }
 
-        Path profilesDir = profilesFilePath.toAbsolutePath().normalize().getParent();
+        Path profilesDir = profileFilePath.toAbsolutePath().normalize().getParent();
         if (profilesDir == null) {
             return raw;
         }
@@ -969,6 +1370,16 @@ public class InquisitorSwingUI extends JFrame {
         } catch (IllegalArgumentException ignored) {
         }
         return raw;
+    }
+
+    private int coalesce(Integer primary, Integer fallback, int defaultValue) {
+        if (primary != null) {
+            return primary;
+        }
+        if (fallback != null) {
+            return fallback;
+        }
+        return defaultValue;
     }
 
     private void parseCounts(String raw, Map<String, Integer> target) {
@@ -1006,18 +1417,33 @@ public class InquisitorSwingUI extends JFrame {
 
     private static class CourseProfile {
         private String name;
+        private String heading;
+        private String subheading;
         private String basePath;
+        private int totalExams;
+        private int totalStudents;
         private final Map<String, Integer> questionCounts = new LinkedHashMap<>();
 
         private CourseProfile(String name, String basePath) {
             this.name = name;
+            this.heading = "";
+            this.subheading = "";
             this.basePath = basePath;
+            this.totalExams = 8;
+            this.totalStudents = 120;
         }
 
         @Override
         public String toString() {
             return name;
         }
+    }
+
+    private static class SavedProfile {
+        private String name;
+        private Boolean compilePdf;
+        private Integer selectedCourseIndex;
+        private final List<CourseProfile> courses = new ArrayList<>();
     }
 
     private static class ScriptDefaults {
@@ -1080,6 +1506,14 @@ public class InquisitorSwingUI extends JFrame {
             }
             String courseName = (heading != null && !heading.isBlank()) ? heading : "Imported course";
             CourseProfile profile = new CourseProfile(courseName, basePath);
+            profile.heading = (heading == null) ? "" : heading;
+            profile.subheading = (subheading == null) ? "" : subheading;
+            if (totalExams != null) {
+                profile.totalExams = totalExams;
+            }
+            if (totalStudents != null) {
+                profile.totalStudents = totalStudents;
+            }
             profile.questionCounts.putAll(counts);
             return profile;
         }
