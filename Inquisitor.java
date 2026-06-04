@@ -277,9 +277,15 @@ public class Inquisitor {
             writer.newLine();
             writer.write("\\usepackage{setspace}");            // Line spacing control
             writer.newLine();
-            writer.write("\\geometry{a4paper, margin=0.75in}"); // Thinner margins
+            writer.write("\\geometry{a4paper, margin=0.5in}"); // One-third less margin space than 0.75in
             writer.newLine();
             writer.write("\\setstretch{0.8}");                 // Reduced line spacing
+            writer.newLine();
+            writer.write("\\hyphenpenalty=10000");             // Prevent words from splitting across lines
+            writer.newLine();
+            writer.write("\\exhyphenpenalty=10000");           // Prevent breaks at explicit hyphens
+            writer.newLine();
+            writer.write("\\emergencystretch=2em");            // Allow cleaner spacing without hyphenation
             writer.newLine();
             writer.write("\\begin{document}");
             writer.newLine();
