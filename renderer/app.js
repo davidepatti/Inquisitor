@@ -174,7 +174,7 @@ function renderQaFiles() {
   el.qaList.innerHTML = "";
 
   if (state.qaFiles.length === 0) {
-    el.qaList.innerHTML = '<div class="empty-state">No .qa files found.</div>';
+    el.qaList.innerHTML = '<div class="empty-state">No .qa.md files found.</div>';
     updateTotal();
     return;
   }

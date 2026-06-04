@@ -321,7 +321,7 @@ async function listQaFiles(basePath) {
   const normalizedBasePath = path.resolve(basePath || ".");
   const entries = await fsp.readdir(normalizedBasePath, { withFileTypes: true });
   const files = entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".qa"))
+    .filter((entry) => entry.isFile() && isQuestionBankFileName(entry.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     .map((entry) => entry.name);
 
@@ -329,13 +329,24 @@ async function listQaFiles(basePath) {
   for (const fileName of files) {
     const filePath = path.join(normalizedBasePath, fileName);
     const text = await fsp.readFile(filePath, "utf8").catch(() => "");
-    const questionCount = text
-      .split(/\r?\n/)
-      .filter((line) => line.trimStart().startsWith("[Q]")).length;
+    const questionCount = countQuestionBankEntries(text);
     results.push({ fileName, path: filePath, questionCount });
   }
 
   return { basePath: normalizedBasePath, files: results };
+}
+
+function isQuestionBankFileName(fileName) {
+  return fileName.toLowerCase().endsWith(".qa.md");
+}
+
+function countQuestionBankEntries(text) {
+  return text
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trimStart();
+      return /^##[ \t]+/.test(trimmed);
+    }).length;
 }
 
 function sanitizeHeading(heading) {

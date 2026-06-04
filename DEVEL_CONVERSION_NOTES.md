@@ -13,7 +13,8 @@ Main files:
 - `electron/preload.cjs`: secure bridge between the renderer and Electron main process.
 - `renderer/`: modern web interface for course/profile selection, question counts, generation options, logs, and output actions.
 - `courses.properties`: persisted course/profile data used by the Electron UI.
-- `questions/`, `Wallace_questions/`, `Lynch_questions/`: sample or working `.qa` question-bank folders.
+- `questions/`, `Wallace_questions/`, `Lynch_questions/`: sample or working `.qa.md` question-bank folders.
+- `scripts/convert_qa_to_md.cjs`: one-way converter from old `.qa` files to `.qa.md`.
 - `scripts/build_electron_java.sh`: compiles the Java CLI into `build/electron-java/classes`.
 - `scripts/inquisitor`: convenience launcher for `npm start`.
 
@@ -22,8 +23,8 @@ Main files:
 The Electron UI lets the user:
 
 - Select or add a course profile.
-- Choose a folder containing `.qa` files.
-- Pick how many questions to draw from each `.qa` file.
+- Choose a folder containing `.qa.md` files.
+- Pick how many questions to draw from each question-bank file.
 - Set heading, subheading, seed, number of exam variants, and number of students.
 - Generate exam artifacts.
 - Optionally run `pdflatex` twice to create a PDF.
@@ -32,7 +33,7 @@ The Electron UI lets the user:
 The CLI accepts arguments in this shape:
 
 ```bash
-java Inquisitor n1 file1.qa n2 file2.qa \
+java Inquisitor n1 file1.qa.md n2 file2.qa.md \
   --base_path ./questions \
   --seed 20260603 \
   --total_exams 8 \
@@ -50,7 +51,31 @@ Important defaults:
 
 ## Data Formats to Preserve
 
-Question bank format:
+Recommended Markdown question bank format:
+
+```md
+# Optional bank title
+
+## Question text with $x^2$ math
+
+Optional extra prompt paragraph.
+
+- Correct answer
+- Wrong answer 1
+- Wrong answer 2
+- Wrong answer 3
+```
+
+Notes:
+
+- Markdown question banks use the `.qa.md` extension.
+- Each `##` heading starts a question.
+- Paragraphs after the heading and before the answers are included in the question prompt.
+- Each question expects exactly 4 answer bullets.
+- The first answer bullet is treated as the correct answer before answer shuffling.
+- Questions and answers may include LaTeX snippets delimited by `$...$` or `$$...$$`.
+
+Old converter-only question bank format:
 
 ```text
 [Q] Question text [/Q]
@@ -60,19 +85,20 @@ Wrong answer 2
 Wrong answer 3
 ```
 
-Notes:
+Converter notes:
 
-- Multi-line question blocks are supported between `[Q]` and `[/Q]`.
-- Each question currently expects exactly 4 answers.
-- The first answer must be marked with `*` and is treated as the correct answer before answer shuffling.
-- Questions and answers may include LaTeX snippets delimited by `$`.
+- Old `.qa` files are not accepted by the Java generator or Electron UI.
+- Convert old `.qa` files with `node scripts/convert_qa_to_md.cjs path/to/questions`.
+- Multi-line question blocks are supported between `[Q]` and `[/Q]` by the converter.
+- The converter expects exactly 4 answers and one `*`-marked correct answer per old question.
+- Converted `.qa.md` files place the correct answer first.
 
 Course profile format:
 
 - Stored as Java `.properties`.
 - Course order is listed in `courses=1,2,3`.
 - Course records use `course.<id>.name`, `course.<id>.path`, `course.<id>.counts`, and newer optional per-course settings like heading, subheading, total exams, and total students.
-- Counts are stored as `file.qa=3;other.qa=2`.
+- Counts are stored as `file.qa.md=3;other.qa=2`.
 
 Generated artifact behavior:
 
@@ -94,7 +120,7 @@ Implemented in this first Electron pass:
 
 - `package.json` and `package-lock.json` with Electron 42.3.2.
 - `scripts/build_electron_java.sh` to compile the Java CLI into `build/electron-java/classes`.
-- `electron/main.cjs` to load/save profiles, scan `.qa` folders, invoke Java, stream logs, optionally call `pdflatex`, and open outputs.
+- `electron/main.cjs` to load/save profiles, scan `.qa.md` folders, invoke Java, stream logs, optionally call `pdflatex`, and open outputs.
 - `electron/preload.cjs` to expose a small secure API to the renderer.
 - `renderer/index.html`, `renderer/styles.css`, and `renderer/app.js` for the first modern interface.
 
@@ -106,7 +132,7 @@ Removed from the active code path:
 
 Future core modules to extract/port only if/when Java is retired:
 
-- `parseQaFile(text): Question[]`
+- `parseQuestionBankFile(text): Question[]`
 - `generateExamSet(config, questionBanks): ExamData[]`
 - `renderLatex(config, exams): string`
 - `renderResultsCsv(config, exams): string`
@@ -117,7 +143,7 @@ Future core modules to extract/port only if/when Java is retired:
 Compatibility concerns:
 
 - Java uses `java.util.Random`; use a compatible implementation in TypeScript if old seeds must reproduce old exam variants exactly.
-- Preserve current `.qa` parsing and LaTeX escaping in tests before improving it. The current code escapes question text during parsing and again during rendering, so fixtures should decide what behavior the first web version must match.
+- Runtime question parsing accepts `.qa.md` only. Old `.qa` parsing lives only in `scripts/convert_qa_to_md.cjs`.
 - CSV formulas currently use semicolon separators, which is appropriate for some Google Sheets locales but may need an option in the web version.
 - `pdflatex` is an external dependency. Electron should detect it, show availability, and allow generation of `.tex`/CSV/key even if PDF compilation is unavailable.
 
@@ -125,7 +151,7 @@ Compatibility concerns:
 
 1. Scaffold Electron plus a web renderer, preferably with TypeScript.
 2. Port the generator core without UI dependencies.
-3. Add fixture tests from existing `.qa` files and generated outputs.
+3. Add fixture tests from existing `.qa.md` files and generated outputs.
 4. Build the renderer UI around the current exam-generation workflow.
 5. Add Electron main-process services for selecting folders, saving profiles, writing outputs, running `pdflatex`, and opening PDFs.
 6. Add Electron packaging scripts for distributable native apps.

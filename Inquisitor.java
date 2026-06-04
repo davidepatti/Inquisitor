@@ -7,6 +7,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class Inquisitor {
+    private static final int ANSWERS_PER_QUESTION = 4;
+
     private static long defaultSeedForToday() {
         return Long.parseLong(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
     }
@@ -443,8 +445,8 @@ public class Inquisitor {
         for (Question q : questions) {
             StringBuilder questionTex = new StringBuilder();
 
-            // Write question text with escaped LaTeX characters, preserving math mode
-            questionTex.append("\\textbf{Q" + questionNumber + ": " + escapeLatex(q.text)+"}");
+            // Keep only the question label bold, so multi-line prompts and display math render cleanly.
+            questionTex.append("\\textbf{Q" + questionNumber + ":} " + escapeLatex(q.text));
             questionTex.append("\n\n");
 
             // Begin enumerate environment with numerical labels
@@ -604,39 +606,59 @@ public class Inquisitor {
     private static String escapeLatex(String text) {
         StringBuilder escaped = new StringBuilder();
         boolean inMathMode = false;
+        String mathDelimiter = null;
         int last = 0;
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) == '$') {
-                // Append the segment before the $
-                if (i > last) {
-                    String segment = text.substring(last, i);
-                    if (!inMathMode) {
-                        escaped.append(escapeLatexSegment(segment));
-                    } else {
-                        escaped.append(segment);
-                    }
-                }
-                // Append the $
-                escaped.append('$');
-                // Toggle math mode
-                inMathMode = !inMathMode;
-                last = i + 1;
+        int i = 0;
+
+        while (i < text.length()) {
+            if (text.charAt(i) != '$') {
+                i++;
+                continue;
             }
+
+            int delimiterLength = (i + 1 < text.length() && text.charAt(i + 1) == '$') ? 2 : 1;
+            String delimiter = text.substring(i, i + delimiterLength);
+
+            if (!inMathMode) {
+                if (i > last) {
+                    escaped.append(escapeLatexSegment(text.substring(last, i)));
+                }
+                escaped.append(delimiter);
+                inMathMode = true;
+                mathDelimiter = delimiter;
+                i += delimiterLength;
+                last = i;
+                continue;
+            }
+
+            if (delimiter.equals(mathDelimiter)) {
+                if (i > last) {
+                    escaped.append(text.substring(last, i));
+                }
+                escaped.append(delimiter);
+                inMathMode = false;
+                mathDelimiter = null;
+                i += delimiterLength;
+                last = i;
+                continue;
+            }
+
+            i += delimiterLength;
         }
-        // Append any remaining text after the last $
+
         if (last < text.length()) {
             String segment = text.substring(last);
-            if (!inMathMode) {
-                escaped.append(escapeLatexSegment(segment));
-            } else {
+            if (inMathMode) {
                 escaped.append(segment);
+            } else {
+                escaped.append(escapeLatexSegment(segment));
             }
         }
-        // Warn if dollars are unbalanced
-        int dollarCount = countChar(text, '$');
-        if (dollarCount % 2 != 0) {
-            System.out.println("Warning: Unbalanced '$' symbols in text: " + text);
+
+        if (inMathMode) {
+            System.out.println("Warning: Unbalanced math delimiter " + mathDelimiter + " in text: " + text);
         }
+
         return escaped.toString();
     }
 
@@ -669,23 +691,6 @@ public class Inquisitor {
     }
 
     /**
-     * Counts the occurrences of a specific character in a string.
-     *
-     * @param text The input string.
-     * @param c    The character to count.
-     * @return The number of occurrences.
-     */
-    private static int countChar(String text, char c) {
-        int count = 0;
-        for (char current : text.toCharArray()) {
-            if (current == c) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    /**
      * Escapes double quotes for CSV formulas.
      *
      * @param text The input string.
@@ -706,95 +711,155 @@ public class Inquisitor {
      * @throws IOException If an I/O error occurs.
      */
     private static List<Question> readQuestionsFromFile(String filePath) throws IOException {
-        List<Question> questions = new ArrayList<>();
+        if (!filePath.toLowerCase(Locale.ROOT).endsWith(".qa.md")) {
+            throw new IOException("Unsupported question bank format: " + filePath
+                    + ". Use .qa.md files, or convert old .qa files with scripts/convert_qa_to_md.cjs.");
+        }
         List<String> lines = Files.readAllLines(Paths.get(filePath));
+        return readMarkdownQuestionsFromLines(lines, filePath);
+    }
+
+    private static List<Question> readMarkdownQuestionsFromLines(List<String> lines, String filePath) throws IOException {
+        List<Question> questions = new ArrayList<>();
+        List<String> promptLines = new ArrayList<>();
+        List<StringBuilder> answerBuilders = new ArrayList<>();
+        boolean readingAnswers = false;
+        int questionStartLine = -1;
+
         for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i).trim();
-            if (!line.startsWith("[Q]")) {
+            String rawLine = lines.get(i);
+            String trimmed = rawLine.trim();
+            int lineNumber = i + 1;
+
+            if (isMarkdownQuestionHeading(trimmed)) {
+                addMarkdownQuestion(questions, promptLines, answerBuilders, filePath, questionStartLine);
+                promptLines = new ArrayList<>();
+                answerBuilders = new ArrayList<>();
+                readingAnswers = false;
+                questionStartLine = lineNumber;
+
+                String headingText = trimmed.substring(2).trim();
+                if (!headingText.isEmpty()) {
+                    promptLines.add(headingText);
+                }
                 continue;
             }
 
-            String questionText;
-            int inlineClose = line.indexOf("[/Q]");
-            if (inlineClose >= 0) {
-                String inlineQuestion = line.substring(3, inlineClose).trim();
-                questionText = escapeLatex(inlineQuestion);
-            } else {
-                StringBuilder questionBuilder = new StringBuilder();
-                String firstPart = line.substring(3).trim();
-                if (!firstPart.isEmpty()) {
-                    questionBuilder.append(firstPart);
-                }
+            if (questionStartLine < 0) {
+                continue;
+            }
 
-                boolean foundClose = false;
-                while (++i < lines.size()) {
-                    String qLine = lines.get(i).trim();
-                    int closeIdx = qLine.indexOf("[/Q]");
-                    if (closeIdx >= 0) {
-                        String beforeClose = qLine.substring(0, closeIdx).trim();
-                        if (!beforeClose.isEmpty()) {
-                            if (questionBuilder.length() > 0) {
-                                questionBuilder.append(' ');
-                            }
-                            questionBuilder.append(beforeClose);
-                        }
-                        foundClose = true;
-                        break;
+            String bulletText = markdownBulletText(trimmed);
+            if (bulletText != null) {
+                readingAnswers = true;
+                answerBuilders.add(new StringBuilder(bulletText));
+                continue;
+            }
+
+            if (readingAnswers) {
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (answerBuilders.isEmpty()) {
+                    throw new IOException("Answer continuation without an answer bullet in " + filePath + " at line " + lineNumber);
+                }
+                if (rawLine.startsWith(" ") || rawLine.startsWith("\t")) {
+                    StringBuilder currentAnswer = answerBuilders.get(answerBuilders.size() - 1);
+                    if (currentAnswer.length() > 0) {
+                        currentAnswer.append(' ');
                     }
-                    if (!qLine.isEmpty()) {
-                        if (questionBuilder.length() > 0) {
-                            questionBuilder.append(' ');
-                        }
-                        questionBuilder.append(qLine);
-                    }
+                    currentAnswer.append(trimmed);
+                    continue;
                 }
-
-                if (!foundClose) {
-                    throw new IOException("Missing [/Q] for question in file: " + filePath);
-                }
-                questionText = escapeLatex(questionBuilder.toString());
+                throw new IOException("Expected an answer bullet or a new ## question in " + filePath + " at line " + lineNumber + ": " + trimmed);
             }
 
-            List<String> answers = new ArrayList<>();
-            String correctAnswerStr = null;
-            for (int answerIdx = 0; answerIdx < 4; answerIdx++) {
-                i++;
-                while (i < lines.size() && lines.get(i).trim().isEmpty()) {
-                    i++;
-                }
-                if (i >= lines.size()) {
-                    throw new IOException("Unexpected end of file while reading answers for question: " + questionText);
-                }
-                String answerLine = lines.get(i).trim();
-                if (answerIdx == 0 && answerLine.startsWith("*")) {
-                    correctAnswerStr = answerLine.substring(1).trim();
-                    answers.add(correctAnswerStr);
-                } else {
-                    answers.add(answerLine);
-                }
-            }
-
-            if (correctAnswerStr == null) {
-                throw new IOException("No correct answer found for question: " + questionText);
-            }
-
-            // Initially, correctAnswerIndex is set to 0 (will be updated after shuffling)
-            questions.add(new Question(questionText, answers, 0));
+            promptLines.add(trimmed);
         }
 
+        addMarkdownQuestion(questions, promptLines, answerBuilders, filePath, questionStartLine);
         return questions;
     }
 
-    /**
-     * Extracts the question text from a line.
-     *
-     * @param line Line containing the question.
-     * @return Extracted question text.
-     */
-    private static String extractQuestionText(String line) {
-        // Remove [Q] and [/Q]
-        line = line.substring(3, line.length() - 4).trim();
-        return escapeLatex(line);
+    private static boolean isMarkdownQuestionHeading(String trimmedLine) {
+        return (trimmedLine.startsWith("## ") || trimmedLine.startsWith("##\t"))
+                && !trimmedLine.startsWith("###");
+    }
+
+    private static String markdownBulletText(String trimmedLine) {
+        if (trimmedLine.length() < 2) {
+            return null;
+        }
+
+        char bullet = trimmedLine.charAt(0);
+        if ((bullet == '-' || bullet == '*' || bullet == '+') && Character.isWhitespace(trimmedLine.charAt(1))) {
+            return trimmedLine.substring(2).trim();
+        }
+
+        return null;
+    }
+
+    private static void addMarkdownQuestion(
+            List<Question> questions,
+            List<String> promptLines,
+            List<StringBuilder> answerBuilders,
+            String filePath,
+            int questionStartLine
+    ) throws IOException {
+        if (questionStartLine < 0) {
+            return;
+        }
+
+        String prompt = normalizeMarkdownBlock(promptLines);
+        if (prompt.isEmpty()) {
+            throw new IOException("Empty question heading in " + filePath + " at line " + questionStartLine);
+        }
+
+        if (answerBuilders.size() != ANSWERS_PER_QUESTION) {
+            throw new IOException("Question in " + filePath + " at line " + questionStartLine
+                    + " must have exactly " + ANSWERS_PER_QUESTION + " answers; found " + answerBuilders.size());
+        }
+
+        List<String> answers = new ArrayList<>();
+        for (StringBuilder answerBuilder : answerBuilders) {
+            String answer = answerBuilder.toString().trim();
+            if (answer.isEmpty()) {
+                throw new IOException("Empty answer in " + filePath + " for question at line " + questionStartLine);
+            }
+            answers.add(answer);
+        }
+
+        questions.add(new Question(prompt, answers, 0));
+    }
+
+    private static String normalizeMarkdownBlock(List<String> lines) {
+        int first = 0;
+        int last = lines.size() - 1;
+        while (first <= last && lines.get(first).trim().isEmpty()) {
+            first++;
+        }
+        while (last >= first && lines.get(last).trim().isEmpty()) {
+            last--;
+        }
+
+        StringBuilder normalized = new StringBuilder();
+        boolean pendingParagraphBreak = false;
+
+        for (int i = first; i <= last; i++) {
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) {
+                pendingParagraphBreak = normalized.length() > 0;
+                continue;
+            }
+
+            if (normalized.length() > 0) {
+                normalized.append(pendingParagraphBreak ? "\n\n" : " ");
+            }
+            normalized.append(line);
+            pendingParagraphBreak = false;
+        }
+
+        return normalized.toString();
     }
 
     /**

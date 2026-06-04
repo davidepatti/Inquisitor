@@ -7,7 +7,8 @@
   "scripts": {
     "java:build": "bash scripts/build_electron_java.sh",
     "start": "npm run java:build && electron .",
-    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check renderer/app.js"
+    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check renderer/app.js",
+    "qa:convert": "node scripts/convert_qa_to_md.cjs"
   },
   "devDependencies": {
     "electron": "^42.3.2"
