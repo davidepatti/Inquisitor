@@ -1,86 +1,80 @@
 # Inquisitor
 
-![Inquisitor UI](docs/images/inquisitor-ui.png)
-
 ## Requirements
 
-- JDK 17+ (`javac`, `jar`, `jpackage`)
+- JDK 17+ (`javac`, `java`)
+- Node.js 22.12+
 
-## macOS
+## Electron App
 
-Build a self-contained `.app`:
+Inquisitor now uses Electron as its desktop interface and keeps `Inquisitor.java` as the command-line generation engine.
 
-```bash
-./scripts/build_macos_app.sh
-```
-
-Generated app:
-
-- `dist/Inquisitor.app`
-
-Run from shell:
+Install dependencies:
 
 ```bash
-./scripts/launch_inquisitor.sh
+npm install
 ```
 
-Open from Finder:
+Run the app:
 
 ```bash
-./scripts/launch_inquisitor.sh --open
+npm start
 ```
 
-Auto-build + run:
+Or use the convenience launcher:
 
 ```bash
 ./scripts/inquisitor
 ```
 
-Supported env vars (`build_macos_app.sh`):
+## IntelliJ IDEA
 
-- `APP_NAME` (default: `Inquisitor`)
-- `MAIN_CLASS` (default: `InquisitorSwingUI`)
-- `JAR_NAME` (default: `Inquisitor.jar`)
-- `DIST_DIR` (default: `./dist`)
-- `ICON_PATH` (default: `./assets/Inquisitor.icns`, if present)
+Open the project folder in IntelliJ IDEA. The shared run configurations in `.run/` should appear in the run configuration menu:
 
-Supported env vars (`launch_inquisitor.sh`):
+- `Inquisitor Electron`: starts the Electron app with `npm start`
+- `Build Java CLI`: compiles `Inquisitor.java`
+- `Check Electron App`: syntax-checks the Electron files
 
-- `APP_NAME` (default: `Inquisitor`)
-- `APP_PATH` (default: `./dist/<APP_NAME>.app`)
+If dependencies are not installed yet, run `npm install` once from IntelliJ's Terminal or from the package.json npm scripts view.
 
-## Ubuntu/Linux
-
-Build Linux app image (default):
+If your IntelliJ edition does not load npm run configurations, use the Terminal inside IntelliJ:
 
 ```bash
-./scripts/build_linux_app.sh
+./scripts/inquisitor
 ```
 
-Run it:
+Useful scripts:
+
+- `npm run java:build`: compiles `Inquisitor.java` into `build/electron-java/classes`
+- `npm run check`: syntax-checks the Electron main, preload, and renderer scripts
+
+The Electron UI loads `courses.properties`, scans `.qa` folders, runs the Java CLI, streams the generation log, and optionally calls `pdflatex` when it is available.
+
+## Java CLI
+
+The Java CLI remains available for compatibility and automation.
+
+Compile it:
 
 ```bash
-./dist/Inquisitor/bin/Inquisitor
+npm run java:build
 ```
 
-Build a `.deb` package instead:
+Run it directly:
 
 ```bash
-PACKAGE_TYPE=deb ./scripts/build_linux_app.sh
+java -cp build/electron-java/classes Inquisitor n1 file1.qa n2 file2.qa \
+  --base_path ./questions \
+  --seed 20260604 \
+  --total_exams 8 \
+  --students 120 \
+  -h "Exam Heading" \
+  -h2 "Exam Subheading"
 ```
-
-Supported env vars (`build_linux_app.sh`):
-
-- `APP_NAME` (default: `Inquisitor`)
-- `MAIN_CLASS` (default: `InquisitorSwingUI`)
-- `JAR_NAME` (default: `Inquisitor.jar`)
-- `DIST_DIR` (default: `./dist`)
-- `ICON_PATH` (default: `./assets/Inquisitor.png`, if present)
-- `PACKAGE_TYPE` (default: `app-image`, optional `deb`)
 
 ## Default Course Data
 
-Packaged app builds include:
+The default local course/profile data includes:
 
 - `courses.properties`
 - `Wallace_questions/`

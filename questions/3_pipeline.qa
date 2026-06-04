@@ -1,0 +1,77 @@
+[Q] Qual è l’obiettivo principale della tecnica di pipeline nella CPU? [/Q]
+*Aumentare il throughput sovrapponendo le fasi di esecuzione delle istruzioni
+Ridurre il numero totale di istruzioni eseguite
+Aumentare il tempo di esecuzione di ogni fase
+Ridurre la frequenza di clock
+
+[Q] Quante fasi ha tipicamente una pipeline MIPS standard? [/Q]
+*5
+3
+4
+6
+
+[Q] Qual è la prima fase della pipeline? [/Q]
+*Instruction Fetch (IF)
+Instruction Decode (ID)
+Execute (EX)
+Memory Access (MEM)
+
+[Q] A cosa serve il registro IF/ID nella pipeline? [/Q]
+*Conserva IR e PC+4 tra due fasi
+Contiene il risultato dell’ALU
+Salva il contenuto di memoria
+Registra il valore di Write Back
+
+[Q] Quale fase della pipeline è responsabile delle operazioni aritmetiche? [/Q]
+*EX
+IF
+ID
+MEM
+
+[Q] Che cosa fa la fase WB (Write Back)? [/Q]
+*Scrive il risultato nei registri
+Esegue l’operazione aritmetica
+Calcola l’indirizzo di memoria
+Legge un’istruzione
+
+[Q] Qual è la risorsa usata nella fase IF? [/Q]
+*Instruction Memory
+Register File
+ALU
+Data Memory
+
+[Q] Quale stadio della pipeline accede al Register File per leggere gli operandi? [/Q]
+*ID
+IF
+EX
+MEM
+
+[Q] Qual è la funzione del registro MEM/WB? [/Q]
+*Contiene il valore letto dalla memoria pronto per la scrittura
+Contiene la prossima istruzione
+Attiva l’ALU
+Registra l’indirizzo di salto
+
+[Q] In una CPU pipeline, il throughput migliora perché: [/Q]
+*Le istruzioni sono eseguite in parallelo in stadi diversi
+Ogni istruzione richiede meno fasi
+La frequenza di clock può essere aumentata indefinitamente
+Si riduce il numero di istruzioni da eseguire
+
+[Q] In un caso ideale, qual è il valore di CPI in una pipeline a 5 stadi? [/Q]
+*1
+5
+0
+N (numero di istruzioni)
+
+[Q] Perché la pipeline ha bisogno di registri aggiuntivi? [/Q]
+*Per conservare i valori prodotti in una fase e necessari in quella successiva
+Per velocizzare l’ALU
+Per ridurre il numero di istruzioni
+Per scrivere in memoria
+
+[Q] Sia N il numero di stadi, qual è la formula dello speedup ideale della pipeline? [/Q]
+*Speedup = N 
+Speedup = 1/N
+Speedup = CPI × T
+Speedup = N/2

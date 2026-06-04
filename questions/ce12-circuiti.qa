@@ -1,0 +1,65 @@
+[Q] Cosa fa un half adder (HA)? [/Q]
+*Somma due bit senza riporto in ingresso
+Somma tre bit
+Somma due parole a 8 bit
+Genera overflow
+
+[Q] Qual è la differenza principale tra un half adder e un full adder? [/Q]
+*Il full adder ha un ingresso di riporto 
+L'half adder è più lento
+Il full adder è usato solo in moltiplicazione
+L'half adder ha un'uscita di riporto 
+
+[Q] Qual è il principale svantaggio del sommatore a propagazione di riporto? [/Q]
+*Il tempo cresce linearmente con il numero di bit
+Richiede memoria esterna
+Non supporta operazioni algebriche
+Usa solo half adder
+
+[Q] Come si riconosce un overflow nella somma di interi con segno? [/Q]
+*Il segno del risultato è errato rispetto agli operandi
+Il riporto finale è 1
+Il bit meno significativo è 1
+Il risultato è zero
+
+[Q] Cos’è il carry-lookahead? [/Q]
+*Un metodo per calcolare i riporti in parallelo
+Un tipo di sommatore sequenziale
+Una tecnica di trasmissione seriale
+Un overflow detector
+
+[Q] In un moltiplicatore, cosa avviene nella prima fase? [/Q]
+*Calcolo dei prodotti parziali
+Somma diagonale
+Controllo dell’overflow
+Spostamento dei bit
+
+[Q] Qual è la principale caratteristica della somma per colonne? [/Q]
+*Si contano gli 1 di ogni colonna
+Si somma solo la riga più significativa
+Non necessita di contatori
+Non supporta overflow
+
+[Q] Cos’è un contatore parallelo in un moltiplicatore? [/Q]
+*Un circuito che conta quanti bit sono a 1 in una colonna
+Una ALU specializzato per la divisione
+Un latch a due stati
+Un convertitore seriale-parallelo
+
+[Q] Qual è il delay (tempo di ritardo) della somma per diagonali? [/Q]
+*2n - 2
+3n - 4
+n
+n^2
+
+[Q] Quale moltiplicatore usa solo contatori da 2 o 3 ingressi? [/Q]
+*Moltiplicatore di Wallace
+Somma per colonne
+Carry-lookahead
+Half Adder Tree
+
+[Q] In cosa differisce il moltiplicatore di Dadda da quello di Wallace? [/Q]
+*Dadda cerca di contare il meno possibile
+Dadda è più lento
+Wallace usa meno stadi
+Dadda ignora i riporti

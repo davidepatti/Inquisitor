@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inquisitor</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" data-icon="scan"></div>
+          <div>
+            <h1>Inquisitor</h1>
+            <p>Exam generator</p>
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <label for="profile-name">Profile</label>
+          <input id="profile-name" type="text" spellcheck="false">
+          <div id="profile-path" class="small-path"></div>
+          <div class="button-row">
+            <button id="load-profile-btn" class="button secondary" type="button">
+              <span data-icon="upload"></span>
+              <span>Load</span>
+            </button>
+            <button id="save-profile-btn" class="button secondary" type="button">
+              <span data-icon="save"></span>
+              <span>Save</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-block status-block">
+          <div class="status-line">
+            <span id="java-status-icon" class="status-dot muted"></span>
+            <span id="java-status">Java CLI</span>
+          </div>
+          <div class="status-line">
+            <span id="pdf-status-icon" class="status-dot muted"></span>
+            <span id="pdf-status">pdflatex</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Course workspace</p>
+            <h2 id="workspace-title">Inquisitor</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="add-course-btn" class="icon-button" type="button" title="Add course">
+              <span data-icon="plus"></span>
+            </button>
+            <button id="remove-course-btn" class="icon-button danger" type="button" title="Remove course">
+              <span data-icon="trash"></span>
+            </button>
+          </div>
+        </header>
+
+        <section class="course-strip">
+          <label for="course-select">Course</label>
+          <select id="course-select"></select>
+          <button id="refresh-qa-btn" class="button secondary" type="button">
+            <span data-icon="refresh"></span>
+            <span>Refresh</span>
+          </button>
+        </section>
+
+        <section class="setup-grid">
+          <div class="panel parameters-panel">
+            <div class="panel-title">
+              <span data-icon="sliders"></span>
+              <h3>Parameters</h3>
+            </div>
+            <div class="form-grid">
+              <label>
+                <span>Heading</span>
+                <input id="heading-input" type="text" spellcheck="false">
+              </label>
+              <label>
+                <span>Subheading</span>
+                <input id="subheading-input" type="text" spellcheck="false">
+              </label>
+              <label>
+                <span>Seed</span>
+                <input id="seed-input" type="number" min="0" step="1">
+              </label>
+              <label>
+                <span>Exam variants</span>
+                <input id="total-exams-input" type="number" min="1" step="1">
+              </label>
+              <label>
+                <span>Students</span>
+                <input id="total-students-input" type="number" min="1" step="1">
+              </label>
+            </div>
+          </div>
+
+          <div class="panel bank-panel">
+            <div class="panel-title bank-title">
+              <div>
+                <span data-icon="folder"></span>
+                <h3>Question Bank</h3>
+              </div>
+              <button id="browse-folder-btn" class="button secondary" type="button">
+                <span data-icon="folder-open"></span>
+                <span>Browse</span>
+              </button>
+            </div>
+            <label class="folder-field" for="base-path-input">
+              <span>Folder</span>
+              <input id="base-path-input" type="text" spellcheck="false">
+            </label>
+            <div id="qa-list" class="qa-list" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="generate-strip">
+          <div class="selected-count">
+            <span data-icon="list-check"></span>
+            <strong id="total-questions">0</strong>
+            <span>selected questions</span>
+          </div>
+          <label class="toggle">
+            <input id="compile-pdf-input" type="checkbox">
+            <span></span>
+            <strong>Compile PDF</strong>
+          </label>
+          <button id="generate-btn" class="button primary" type="button" disabled>
+            <span data-icon="play"></span>
+            <span>Generate</span>
+          </button>
+        </section>
+
+        <section class="output-grid">
+          <div class="panel output-panel">
+            <div class="panel-title">
+              <span data-icon="files"></span>
+              <h3>Output</h3>
+            </div>
+            <div id="output-summary" class="output-summary">No generation yet.</div>
+            <div class="output-actions">
+              <button id="open-pdf-btn" class="button secondary" type="button" disabled>
+                <span data-icon="file-check"></span>
+                <span>PDF</span>
+              </button>
+              <button id="open-tex-btn" class="button secondary" type="button" disabled>
+                <span data-icon="file-text"></span>
+                <span>TeX</span>
+              </button>
+              <button id="open-csv-btn" class="button secondary" type="button" disabled>
+                <span data-icon="table"></span>
+                <span>CSV</span>
+              </button>
+              <button id="open-folder-btn" class="button secondary" type="button" disabled>
+                <span data-icon="external"></span>
+                <span>Folder</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="panel log-panel">
+            <div class="panel-title">
+              <span data-icon="terminal"></span>
+              <h3>Run Log</h3>
+            </div>
+            <div id="log-output" class="log-output" aria-live="polite"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="course-dialog" class="dialog">
+      <form method="dialog">
+        <h3>Course</h3>
+        <label>
+          <span>Name</span>
+          <input id="course-dialog-name" type="text" spellcheck="false">
+        </label>
+        <div class="dialog-actions">
+          <button id="course-dialog-cancel" class="button secondary" value="cancel" type="submit">Cancel</button>
+          <button id="course-dialog-save" class="button primary" value="save" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

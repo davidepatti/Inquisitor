@@ -1,0 +1,71 @@
+[Q] Cosa distingue un sistema sequenziale da uno combinatorio? [/Q]
+*Le uscite dipendono anche dallo stato precedente
+Le uscite dipendono solo dagli ingressi attuali
+Usa solo latch SR
+È composto solo da flip-flop
+
+[Q] Cosa sono i bistabili? [/Q]
+*Elementi sequenziali con due stati stabili
+Porte logiche asincrone
+Contatori sincroni
+Memorie ROM
+
+[Q] Cosa accade nel latch SR se S=1 e R=1? [/Q]
+*Lo stato è imprevedibile
+Q si azzera
+Q resta invariato
+Q inverte il suo valore
+
+[Q] Cosa rappresenta la tabella delle eccitazioni di un bistabile? [/Q]
+*Indica quali ingressi servono per una certa transizione
+Mostra i tempi di clock
+Descrive i fronti del segnale di clock
+Elenca i tipi di flip-flop
+
+[Q] Quale vantaggio offre il latch JK rispetto a SR? [/Q]
+*Evita lo stato indeterminato per J=K=1
+Ha meno ingressi
+È più veloce
+Non usa retroazioni
+
+[Q] Quale caratteristica ha il latch T? [/Q]
+*Commutazione quando T=1
+Memorizza 4 bit
+Si comporta come un JK con T=J=K
+Si attiva sul fronte di discesa
+
+[Q] Come si comporta il latch D? [/Q]
+*Trasferisce il valore di D all’uscita Q
+Effettua una somma
+Inverte i bit
+Conta eventi
+
+[Q] A cosa servono i tempi di setup e hold? [/Q]
+*Garantire la corretta acquisizione del dato sul clock
+Calcolare il ritardo di propagazione
+Misurare la frequenza
+Evitare condizioni don't care
+
+[Q] Qual è la principale differenza tra latch e flip-flop edge-sensitive? [/Q]
+*Il flip-flop cambia stato solo sul fronte del clock
+Il latch non ha ingressi
+Il flip-flop è asincrono
+Il latch è sempre più veloce
+
+[Q] Cos’è un flip-flop Master-Slave D? [/Q]
+*Un bistabile sincrono che si attiva sul fronte di salita
+Un contatore binario
+Un latch asincrono senza clock
+Un comparatore
+
+[Q] Perché i latch trasparenti possono essere problematici? [/Q]
+*Possono causare race conditions
+Sono troppo lenti
+Non possono essere in modalità analogica
+Usano troppo spazio
+
+[Q] Qual è la funzione del clock in un bistabile sincrono? [/Q]
+*Controlla quando lo stato può cambiare
+Mantiene Q sempre a 0
+Velocità il bistabile
+Inverte i segnali

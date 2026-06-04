@@ -1,0 +1,1419 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage{setspace}
+\geometry{a4paper, margin=0.75in}
+\setstretch{0.8}
+\begin{document}
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD11]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Cosa contiene la memoria SRAM di un microcontrollore?}
+
+\begin{enumerate}[label=\arabic*.]
+\item La configurazione del microcontrollore
+\item I dati di debug
+\item Il sistema operativo
+\item Le variabili in uso dal programma
+\end{enumerate}
+\textbf{Q2: A cosa serve l'ADC nei microcontrollori?}
+
+\begin{enumerate}[label=\arabic*.]
+\item A scrivere su EEPROM
+\item A gestire l’alimentazione
+\item A convertire segnali analogici in ingresso
+\item A generare segnali PWM
+\end{enumerate}
+\textbf{Q3: Quando è necessario l’I/O analogico?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per convertire dati binari in stringhe
+\item Solo per segnali digitali rapidi
+\item Per ridurre il consumo energetico
+\item Quando il livello di tensione trasporta informazione
+\end{enumerate}
+\textbf{Q4: Qual è la differenza tra full-duplex e half-duplex?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nel full-duplex entrambi possono trasmettere contemporaneamente
+\item Half-duplex richiede più memoria
+\item Nel full-duplex si usa una sola linea dati
+\item Full-duplex è sempre asincrono
+\end{enumerate}
+\textbf{Q5: In una interfaccia UART:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Utilizza un bus con le linee RX e TX
+\item Nessuna delle opzioni riportate
+\item Le linee di trasmissione sono connesse tra di loro
+\item La linea di trasmissione è connessa a quella di ricezione
+\end{enumerate}
+\textbf{Q6: In una interfaccia I2C:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il segnale SDA è costituito da un insieme di linee parallele, una per ogni slave
+\item Non si rende necessario l'addressing, ossia la comunicazione dell'indirizzo di destinazione da parte del master
+\item Tutte le affermazioni sono corrette
+\item Il segnale SDA trasporta sia segnale dati che di controllo
+\end{enumerate}
+\textbf{Q7: L'upload del programma alla memoria flash del microcontrollore è necessario:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ogni qual volta si modifica il circuito sulla breadboard
+\item Ogni qual volta si modifica il codice del programma
+\item Ogni qual volta si toglie l'alimentazione alla board
+\item Ogni qual volta si esegue il codice del programma
+\end{enumerate}
+\textbf{Q8: Qual è una soluzione al problema del bouncing?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ignorare interrupt se è trascorso poco tempo dall'ultima chiamata
+\item Cambiare il pin GPIO
+\item Utilizzare un LED come filtro
+\item Disattivare il Wi-Fi e le connessioni seriali
+\end{enumerate}
+\textbf{Q9: Perché è sconsigliato usare `delay()` in applicazioni complesse?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Blocca l’esecuzione del programma
+\item Disattiva gli interrupt
+\item Richiede molta memoria
+\item Consuma più energia
+\end{enumerate}
+\textbf{Q10: Quale tra questi non è un argomento valido per `pinMode()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item INPUT\_PULLUP
+\item OUTPUT\_PULLDOWN
+\item OUTPUT
+\item INPUT
+\end{enumerate}
+\textbf{Q11: Qual è l’uso principale della funzione `attachInterrupt()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Gestire eventi su un GPIO con una ISR
+\item Controllare segnali PWM
+\item Scrivere dati su un pin digitale
+\item Attivare la comunicazione SPI
+\end{enumerate}
+\textbf{Q12: Cosa rappresenta un "Device Template" in Blynk?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un modello per creare dispositivi con le stesse funzionalità
+\item Un firmware aggiornato per modelli con simili funzionalità
+\item Un modello per progettare sensori
+\item Un'app per smartphone per progettare interfacce IoT
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.125 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $2 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: In un sistema IoT occorre gestire l'acquisizione di burst di dati caratterizzati da un tempo di silenzio $t_{off}=50\mu sec$. Ogni burst ha una durata $t_{ON}$ che puo' variare da $t_{ON\_min}$ uguale a $0.1 sec$ a $4 sec$. In ciascun periodo $t_{ON}$ arrivano sempre 2MB, con arrivi distribuiti uniformemente.  Assumendo una gestione con interrupt e overhead $W=0.3$ calcolare il valore massimo di $T_{ISR}$ per acquisire correttamente i dati del traffico bursty sopra descritto.}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item $0.01\times10^{-6}$ sec/byte
+\item $3.8\times10^{-8}$ sec/byte
+\item $25\times10^{-5}$ sec/byte
+\end{enumerate}
+\textbf{Q15: Sia dato un sistema IoT in cui si voglia valutare la massima frequenza di segnale acquisibile da una sorgente analogica, espressa in byte/sec. Assumendo una gestione del sistema di I/O con polling, con $T_{TR}=100\mu sec$ e $\eta_{Poll}=0.5$, indicare la risposta corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.25\times10^4 byte/sec$
+\item $0.015\times10^3 byte/sec$
+\item $0.11\times10^3 byte/sec$
+\item $0.15\times10^3 byte/sec$
+\end{enumerate}
+\textbf{Q16: In un sistema di gestione dell’I/O con DMA si hanno migliori prestazioni per il trasferimento di N byte rispetto ad un sistema di gestione basato sull’interrupt soltanto se:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item N è sufficientemente alto
+\item Si utilizza una architettura Harvard
+\item Non ci sono conflitti (f = 0)
+\end{enumerate}
+\textbf{Q17: Data una gestione dell’I/O basata su DMA per trasferire burst di dati dall’I/O e che un periodo di silenzio $T_{off}$ di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento. Qual è il massimo throughput che si può smaltire in ciascun burst, nel periodo $T_{ON}$ in cui arrivano N bytes, nel caso di una architettura Harvard, percentuale di conflitti f non nulla, e una politica di gestione dei conflitti di tipo "CPU waiting for DMA" ?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item $\frac{1}{T_{tr\_DMA}}$
+\item $0.5 \times \frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item $\frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\end{enumerate}
+\textbf{Q18: Con riferimento alla catena di acquisizione di un sistema IoT con una sorgente analogica caratterizzata da un valore di $f_{MAX[segnale]} = K$, selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item La latenza del convertitore A/D deve essere almeno il doppio di $f_{MAX[segnale]}$
+\item Il throughput minimo del sistema di I/O deve essere almeno il doppio della frequenza di campionamento di Nyquist
+\item La latenza del Sample\&Hold deve essere il doppio di $f_{MAX[segnale]}$
+\end{enumerate}
+\textbf{Q19: In un sistema di I/O con interrupt, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non dipende da $T_{ISR}$
+\item È pari al max throughput di I/O che si può scambiare
+\item Nessuna delle altre opzioni
+\item Non dipende dall’interrupt overhead W
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non dipende da W
+\item E' inversamente proporzionale al valore $T_{TR}$
+\item Non dipende da $X_M$
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item il Fog Computing serve soprattutto a esporre interfacce di programmazione più agevoli agli sviluppatori di applicazioni, nascondendo loro la complessità dei livelli più bassi della gerarchia
+\item Il Fog Computing serve soprattutto a interfacciare i nodi IoT con la piattaforma IoT
+\item Nessuna delle altre risposte
+\item Il Fog Computing non si utilizza nel caso vi siano vincoli troppo stringenti di real time
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD12]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Cosa contiene la memoria flash di un microcontrollore?}
+
+\begin{enumerate}[label=\arabic*.]
+\item I dati per il debug mediante connessione seriale
+\item Le connessioni di rete attive
+\item Il programma da eseguire
+\item I dati temporanei delle variabili
+\end{enumerate}
+\textbf{Q2: In un microcontrollore, l'output PWM di un pin può essere utilizzato}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per estendere il range di valori di un timer convenzionale
+\item Per programmare le Interrupt Service Routine
+\item Per implementare un convertitore da digitale ad analogico
+\item Per generare un segnale di clock interno a risoluzione maggiore
+\end{enumerate}
+\textbf{Q3: Qual è un metodo semplice per realizzare un DAC a 1 bit?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Usare un amplificatore operazionale
+\item Usare una EEPROM
+\item Utilizzare PWM e filtro passa-basso RC
+\item Collegare un potenziometro
+\end{enumerate}
+\textbf{Q4: In una interfaccia single-ended}
+
+\begin{enumerate}[label=\arabic*.]
+\item E' meno soggetta ad interferenze e rumore
+\item Il trasmettitore ed il ricevitore fanno riferimento alla stessa massa
+\item Ogni bit è trasmesso su due linee singole (cioè non comunicanti tra loro)
+\item Ogni bit trasmesso è seguito da un bit di end
+\end{enumerate}
+\textbf{Q5: In una interfaccia I2C:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il segnale SDA trasporta sia segnale dati che di controllo
+\item Tutte le affermazioni sono corrette
+\item Il segnale SDA è costituito da un insieme di linee parallele, una per ogni slave
+\item Non si rende necessario l'addressing, ossia la comunicazione dell'indirizzo di destinazione da parte del master
+\end{enumerate}
+\textbf{Q6: Come viene rilevato l’inizio di un pacchetto UART?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Dal fronte di discesa del bit di start
+\item Dal clock condiviso
+\item Dal bit di parità
+\item Dall’assenza di segnale
+\end{enumerate}
+\textbf{Q7: Qual è una soluzione al problema del bouncing?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ignorare interrupt se è trascorso poco tempo dall'ultima chiamata
+\item Utilizzare un LED come filtro
+\item Cambiare il pin GPIO
+\item Disattivare il Wi-Fi e le connessioni seriali
+\end{enumerate}
+\textbf{Q8: A cosa serve la fase di calibrazione nei sensori luce?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per stabilire un valore fisso di tensione
+\item Per rilevare il range di valori utili
+\item Per impostare la frequenza del LED
+\item Per impostare il colore del LED
+\end{enumerate}
+\textbf{Q9: Su quali pin è possibile utilizzare `dacWrite()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Solo su alcuni pin
+\item Su pin che vanno scelti in fase di setup
+\item Su tutti i pin digitali
+\item Su tutti i pin analogici
+\end{enumerate}
+\textbf{Q10: Qual è la funzione di `ledcAttach()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Configurare un pin analogico
+\item Stabilire comunicazione UART
+\item Attaccare un interrupt
+\item Configurare il PWM avanzato
+\end{enumerate}
+\textbf{Q11: Cosa è inopportuno porre dentro una ISR:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un insieme di istruzioni che modificano variabili locali
+\item Un insieme di istruzioni che usi variabili booleane
+\item Un insieme di istruzioni che modificano variabili globali
+\item Un insieme di istruzioni ad alta latenza
+\end{enumerate}
+\textbf{Q12: Cosa rappresenta un "Device Template" in Blynk?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un modello per progettare sensori
+\item Un'app per smartphone per progettare interfacce IoT
+\item Un modello per creare dispositivi con le stesse funzionalità
+\item Un firmware aggiornato per modelli con simili funzionalità
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $2 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.125 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: In un sistema IoT occorre gestire l'acquisizione di burst di dati caratterizzati da un tempo di silenzio $t_{off}=50\mu sec$. Ogni burst ha una durata $t_{ON}$ che puo' variare da $t_{ON\_min}$ uguale a $0.1 sec$ a $4 sec$. In ciascun periodo $t_{ON}$ arrivano sempre 2MB, con arrivi distribuiti uniformemente.  Assumendo una gestione con interrupt e overhead $W=0.3$ calcolare il valore massimo di $T_{ISR}$ per acquisire correttamente i dati del traffico bursty sopra descritto.}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item $25\times10^{-5}$ sec/byte
+\item $0.01\times10^{-6}$ sec/byte
+\item $3.8\times10^{-8}$ sec/byte
+\end{enumerate}
+\textbf{Q15: In un sistema IoT occorre gestire l'acquisizione di un burst di dati con tempo di silenzio $t_{off}=50 \mu sec$. Ogni burst ha una durata $t_{on}$ che puo' variare da $0.1 sec$ a $4 sec$. In ciascun periodo $t_{on}$ arrivano sempre 2MB, con arrivi distribuiti uniformente. Assumendo una gestione con polling, calcolare il valore max di $T_{TR}$, assumendo $W=0.1$ e $X_M = 100$, affinche' possa essere smaltito correttamente il traffico bursty nell'ipotesi di $t_{ON\_min}=1 sec$.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $3.5 \mu sec$
+\item $0.005\times10^{-8}$ sec/byte
+\item Nessuna delle altre opzioni
+\item $0.045\times10^{-6}$ sec/byte
+\end{enumerate}
+\textbf{Q16: In un sistema di gestione dell’I/O con DMA si hanno migliori prestazioni per il trasferimento di N byte rispetto ad un sistema di gestione basato sull’interrupt soltanto se:}
+
+\begin{enumerate}[label=\arabic*.]
+\item N è sufficientemente alto
+\item Si utilizza una architettura Harvard
+\item Non ci sono conflitti (f = 0)
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q17: In un sistema di I/O gestito con il DMA, architettura Harvard, $f=0.25$, il max throughput di I/O ottenibile scambiando N bytes:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item E' almeno il doppio di quello ottenibile con $f=0$
+\item E' inversamente proporzionale al valore N
+\item E' direttamente proporzionale al valore N
+\end{enumerate}
+\textbf{Q18: Con riferimento alla catena di acquisizione di un sistema IoT con una sorgente analogica caratterizzata da un valore di $f_{MAX[segnale]} = K$, selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item La latenza del convertitore A/D deve essere almeno il doppio di $f_{MAX[segnale]}$
+\item Nessuna delle altre opzioni
+\item Il throughput minimo del sistema di I/O deve essere almeno il doppio della frequenza di campionamento di Nyquist
+\item La latenza del Sample\&Hold deve essere il doppio di $f_{MAX[segnale]}$
+\end{enumerate}
+\textbf{Q19: Considerando l’utilizzo dell’interrupt come tecnica di gestione dell’I/O:}
+
+\begin{enumerate}[label=\arabic*.]
+\item La gestione della priorità serve ad abbattere l’interrupt overhead
+\item Il vettore di interrupt serve principalmente ad indicare alla CPU la priorità di gestione della ISR
+\item L’interrupt overhead W può essere diminuito se si utilizza una gestione vettorizzata dell’interrupt
+\item Nessuna delle opzioni riportate
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, il max throughput di I/O ottenibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non dipende da W
+\item E' direttamente proporzionale al valore $T_{TR}$
+\item Dipende da W
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item L’uso del MIST Computing, in alcuni scenari che prevedono comunicazioni wireless, comporta un maggior consumo di energia del nodo IoT dovuto alla trasmissione dati
+\item L’uso congiunto di Fog e MIST computing in un sistema IoT normalmente serve ad evitare l’utilizzo del Cloud Computing
+\item Nessuna delle altre risposte
+\item Il ruolo del MIST Computing è principalmente quello di ridurre la complessità del software a bordo dei nodi IoT per limitare il consumo di potenza del nodo
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD13]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Qual è la relazione tra Embedded System e IoT?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un IoT device contiene un sistema embedded
+\item Sono la stessa cosa
+\item L’IoT è una parte del sistema embedded
+\item Il sistema embedded è solo software
+\end{enumerate}
+\textbf{Q2: Cosa fa una resistenza di pull-up?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Attiva il PWM
+\item Mantiene il pin HIGH quando l'interruttore è aperto
+\item Blocca l’input
+\item Abbassa il valore di tensione
+\end{enumerate}
+\textbf{Q3: Un pin che supporta il PWM con segnali di 0 e 5V e con un periodo di 1 millisecondo:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Potrebbe generare un segnale di circa 1V restando al valore alto per 200 microsecondi nel periodo
+\item Genera un segnale di circa 0.2V
+\item Non potrebbe generare segnali di durata  minore di un 1 millisecondo
+\item Può generare qualunque valore di output che sia compreso tra i 0 ed i 5V
+\end{enumerate}
+\textbf{Q4: Nella comunicazione sincrona...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ogni dispositivo usa il proprio clock
+\item Non è necessaria una linea di clock
+\item Si usano sempre 4 linee dati
+\item I clock di trasmissione e ricezione sono collegati
+\end{enumerate}
+\textbf{Q5: In una interfaccia SPI il master:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Seleziona uno slave pilotando il segnale di clock
+\item Comunica a tutti i destinatari, ma solo lo slave che riconosce proprio indirizzo risponde
+\item Seleziona uno slave mediante un segnale apposito (SS)
+\item Può comunicare simultaneamente ad un insieme di destinatari
+\end{enumerate}
+\textbf{Q6: In una interfaccia I2C, il significato del valore che si trova nel segnale SDA:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Dipende dalla frequenza di oscillazione del segnale, ogni frequenza avente un significato diverso
+\item Dipende dal livello di tensione analogico che si trova su SDA
+\item Serve a selezionare lo slave con cui il master vuole comunicare
+\item Dipende dal valore attuale del segnale di clock SCL
+\end{enumerate}
+\textbf{Q7: L'upload del programma alla memoria flash del microcontrollore è necessario:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ogni qual volta si modifica il circuito sulla breadboard
+\item Ogni qual volta si toglie l'alimentazione alla board
+\item Ogni qual volta si esegue il codice del programma
+\item Ogni qual volta si modifica il codice del programma
+\end{enumerate}
+\textbf{Q8: Per un LED, tipicamente è necessaria:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Resistenza di qualche Mega Ohm in serie
+\item Resistenza di qualche Mega Ohm in parallelo
+\item Resistenza di qualche centinaio di Ohm in parallelo
+\item Resistenza di qualche centinaio di Ohm in serie
+\end{enumerate}
+\textbf{Q9: Quale tra questi segnali è generato da `analogWrite()` su ESP32?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Segnale analogico puro
+\item Segnale PWM
+\item Segnale sinusoidale
+\item Segnale digitale ad alta frequenza
+\end{enumerate}
+\textbf{Q10: Quando si usa dacWrite invece di PWM?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Quando si usano motori
+\item Quando serve un segnale digitale
+\item Quando si vuole risparmiare memoria
+\item Quando serve un’uscita analogica precisa
+\end{enumerate}
+\textbf{Q11: Qual è l’uso principale della funzione `attachInterrupt()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Scrivere dati su un pin digitale
+\item Gestire eventi su un GPIO con una ISR
+\item Controllare segnali PWM
+\item Attivare la comunicazione SPI
+\end{enumerate}
+\textbf{Q12: Qual è la funzione principale di $BLYNK\_WRITE(V0)$?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Scrivere dati sul cloud
+\item Gestire aggiornamenti da dashboard verso il dispositivo
+\item Eseguire codice asincrono in ambiente mobile
+\item Inviare messaggi via SPI o I2C
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $2 \times 10^6$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $0.125 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: Assumendo una gestione del sistema di I/O con Interrupt, con $T_{ISR}=100\mu sec$, calcolare il valore massimo di $W$ affinche' si possano acquisire 10 sorgenti analogiche ciascuna caratterizzata da una $f_{MAX[segnale]}$ di 0.3Kbyte/sec.}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.66
+\item 0.5
+\item 0.81
+\item 0.73
+\end{enumerate}
+\textbf{Q15: Assumendo una gestion del sistema di I/O con polling, con $T_{TR}=100\mu sec$, calcolare il minimo valore di $\eta_{Poll}$ affinche' si possano acquisire 5 sorgenti analogiche ciascuna caratterizzata da una $f_{MAX[segnale]}$ di 0.3Kbyte/sec.  Indicare quale dei seguenti valore è quello corretto:}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.35
+\item 0.3
+\item 0.15
+\item 0.27
+\end{enumerate}
+\textbf{Q16: In un sistema di I/O gestito con il DMA, architettura Harvard, $f=0.25$, il max throughput di I/O ottenibile scambiando N bytes:}
+
+\begin{enumerate}[label=\arabic*.]
+\item E' inversamente proporzionale al valore N
+\item E' almeno il doppio di quello ottenibile con $f=0$
+\item Nessuna delle altre opzioni
+\item E' direttamente proporzionale al valore N
+\end{enumerate}
+\textbf{Q17: Si utilizzi un sistema di gestione dell’I/O basato sul DMA per trasferire N bytes di dati dall’I/O. Si assuma una architettura Harvard, una percentuale di conflitti f diversa da 0 e una politica "CPU waits for DMA". Quale fra le seguenti affermazioni è corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il $CPU_{TIME\_IO}$ che la CPU spende per l’I/O non dipende da N
+\item Il $CPU_{TIME\_IO}$ che la CPU spende per l’I/O diminuisce al crescere di N
+\item Nessuna delle altre opzioni
+\item A causa del $CPU_{TIME\_IO}$ che la CPU spende per la gestione dei conflitti, superato un certo valore di f non si ha più alcun vantaggio ad utilizzare il DMA
+\end{enumerate}
+\textbf{Q18: In un sistema IoT in cui sono presenti 16 sorgenti analogiche identiche, ciascuna caratterizzata da una $f_{MAX[segnale]}$ pari a K. Si decide di utilizzare un multiplexer analogico 16:1 che alimenta a valle un Sample\\\&Hold e un convertitore A/D nella catena di acquisizione. Selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$
+\item Il componente Sample\&Hold a valle deve avere una performance almeno pari a 32 volte quella richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle abbia anch’esso una performance 32 volte superiore
+\item Nessuna delle altre opzioni
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle sia 32 volte più performante
+\end{enumerate}
+\textbf{Q19: Considerando l’utilizzo dell’interrupt come tecnica di gestione dell’I/O:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle opzioni riportate
+\item Il vettore di interrupt serve principalmente ad indicare alla CPU la priorità di gestione della ISR
+\item La gestione della priorità serve ad abbattere l’interrupt overhead
+\item L’interrupt overhead W può essere diminuito se si utilizza una gestione vettorizzata dell’interrupt
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item Non dipende da $X_M$
+\item E' direttamente proporzionale al valore $T_{TR}$
+\item Non dipende da W
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre risposte
+\item L’uso del MIST Computing, in alcuni scenari che prevedono comunicazioni wireless, comporta un maggior consumo di energia del nodo IoT dovuto alla trasmissione dati
+\item L’uso congiunto di Fog e MIST computing in un sistema IoT normalmente serve ad evitare l’utilizzo del Cloud Computing
+\item Il ruolo del MIST Computing è principalmente quello di ridurre la complessità del software a bordo dei nodi IoT per limitare il consumo di potenza del nodo
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD14]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Cosa contiene la memoria SRAM di un microcontrollore?}
+
+\begin{enumerate}[label=\arabic*.]
+\item I dati di debug
+\item Le variabili in uso dal programma
+\item Il sistema operativo
+\item La configurazione del microcontrollore
+\end{enumerate}
+\textbf{Q2: Qual è uno svantaggio dei sincronizzatori?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Introducono un ritardo nella trasmissione del segnale
+\item Richiedono più memoria
+\item Consumano più corrente
+\item Aumentano il rumore
+\end{enumerate}
+\textbf{Q3: Il Successive Approximation Converter:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Risolve i problemi del Tracking Converter
+\item Risolve i problemi di meta-stabilità
+\item Risolve i problemi dovuti ai pin floating senza pull resistor
+\item Risolve i problemi del Binary Weighted Resistor converter
+\end{enumerate}
+\textbf{Q4: In un sistema master-slave...}
+
+\begin{enumerate}[label=\arabic*.]
+\item La comunicazione è sempre asincrona
+\item Tutti i nodi sono equivalenti
+\item Lo slave controlla il bus
+\item Solo il master può iniziare una trasmissione
+\end{enumerate}
+\textbf{Q5: In una interfaccia I2C:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Uno slave può mettere in pausa il master mettendo 1 sul segnale SDA
+\item Uno slave può mettere in pausa il master mettendo 0 sul segnale di clock
+\item Un master può mettere in pausa lo slave mettendo 0 sul segnale SDA
+\item Un master può mettere in pausa lo slave mettendo 1 sul segnale di clock
+\end{enumerate}
+\textbf{Q6: In una interfaccia I2C, il significato del valore che si trova nel segnale SDA:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Serve a selezionare lo slave con cui il master vuole comunicare
+\item Dipende dalla frequenza di oscillazione del segnale, ogni frequenza avente un significato diverso
+\item Dipende dal livello di tensione analogico che si trova su SDA
+\item Dipende dal valore attuale del segnale di clock SCL
+\end{enumerate}
+\textbf{Q7: Qual è una soluzione al problema del bouncing?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Disattivare il Wi-Fi e le connessioni seriali
+\item Cambiare il pin GPIO
+\item Ignorare interrupt se è trascorso poco tempo dall'ultima chiamata
+\item Utilizzare un LED come filtro
+\end{enumerate}
+\textbf{Q8: A cosa serve la fase di calibrazione nei sensori luce?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per impostare il colore del LED
+\item Per impostare la frequenza del LED
+\item Per stabilire un valore fisso di tensione
+\item Per rilevare il range di valori utili
+\end{enumerate}
+\textbf{Q9: Cosa accade se si preme il bottone durante un `delay()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il segnale del pin è messo in coda alle richieste
+\item La resistenza interna di pull-up cambia valore
+\item Il microcontrollore non se ne accorge
+\item L’ESP32 si resetta
+\end{enumerate}
+\textbf{Q10: Nel codice di ESP32 la funzione setup()}
+
+\begin{enumerate}[label=\arabic*.]
+\item Viene eseguita alla fine di ogni ripetizione della funzione loop()
+\item Può essere eseguita in qualunque momento, ma una volta sola, mediante apposita chiamata
+\item Viene eseguita una sola volta, all'uscita della funzione loop()
+\item Viene eseguita una sola volta, ad ogni avvio del programma
+\end{enumerate}
+\textbf{Q11: Qual è l’uso principale della funzione `attachInterrupt()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Controllare segnali PWM
+\item Attivare la comunicazione SPI
+\item Gestire eventi su un GPIO con una ISR
+\item Scrivere dati su un pin digitale
+\end{enumerate}
+\textbf{Q12: Cosa rappresenta un "Device Template" in Blynk?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un'app per smartphone per progettare interfacce IoT
+\item Un firmware aggiornato per modelli con simili funzionalità
+\item Un modello per creare dispositivi con le stesse funzionalità
+\item Un modello per progettare sensori
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.125 \times 10^6$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $2 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: Assumendo una gestione del sistema di I/O con Interrupt, con $T_{ISR}=100\mu sec$, calcolare il valore massimo di $W$ affinche' si possano acquisire 10 sorgenti analogiche ciascuna caratterizzata da una $f_{MAX[segnale]}$ di 0.3Kbyte/sec.}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.81
+\item 0.5
+\item 0.73
+\item 0.66
+\end{enumerate}
+\textbf{Q15: Sia dato un sistema IoT in cui si voglia valutare la massima frequenza di segnale acquisibile da una sorgente analogica, espressa in byte/sec. Assumendo una gestione del sistema di I/O con polling, con $T_{TR}=100\mu sec$ e $\eta_{Poll}=0.5$, indicare la risposta corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.25\times10^4 byte/sec$
+\item $0.15\times10^3 byte/sec$
+\item $0.11\times10^3 byte/sec$
+\item $0.015\times10^3 byte/sec$
+\end{enumerate}
+\textbf{Q16: In un sistema di gestione dell’I/O con DMA si hanno migliori prestazioni per il trasferimento di N byte rispetto ad un sistema di gestione basato sull’interrupt soltanto se:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non ci sono conflitti (f = 0)
+\item N è sufficientemente alto
+\item Si utilizza una architettura Harvard
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q17: In un sistema di I/O gestito con il DMA, architettura Harvard, $f=0.25$, il max throughput di I/O ottenibile scambiando N bytes:}
+
+\begin{enumerate}[label=\arabic*.]
+\item E' direttamente proporzionale al valore N
+\item E' inversamente proporzionale al valore N
+\item Nessuna delle altre opzioni
+\item E' almeno il doppio di quello ottenibile con $f=0$
+\end{enumerate}
+\textbf{Q18: In un sistema IoT con due sorgenti analogiche caratterizzate dallo stesso valore di $f_{MAX[segnale]}$ espresso in byte/sec, assumendo una catena di acquisizione con un unico convertitore A/D, selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il massimo throughput di I/O deve essere almeno pari a $4 \times f_{MAX[segnale]}$ byte/sec
+\item Il massimo throughput di I/O deve essere minore o uguale a $2 \times f_{MAX[segnale]}$ byte/sec
+\item Il massimo throughput di I/O deve essere minore o uguale a $8 \times f_{MAX[segnale]}$ byte/sec
+\item Nessuna delle opzioni
+\end{enumerate}
+\textbf{Q19: Considerando l’utilizzo dell’interrupt come tecnica di gestione dell’I/O:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle opzioni riportate
+\item La gestione della priorità serve ad abbattere l’interrupt overhead
+\item L’interrupt overhead W può essere diminuito se si utilizza una gestione vettorizzata dell’interrupt
+\item Il vettore di interrupt serve principalmente ad indicare alla CPU la priorità di gestione della ISR
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, il max throughput di I/O ottenibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item Dipende da W
+\item Non dipende da W
+\item E' direttamente proporzionale al valore $T_{TR}$
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il Fog Computing serve soprattutto a interfacciare i nodi IoT con la piattaforma IoT
+\item il Fog Computing serve soprattutto a esporre interfacce di programmazione più agevoli agli sviluppatori di applicazioni, nascondendo loro la complessità dei livelli più bassi della gerarchia
+\item Il Fog Computing non si utilizza nel caso vi siano vincoli troppo stringenti di real time
+\item Nessuna delle altre risposte
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD15]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Cosa rende un sistema embedded un dispositivo IoT?}
+
+\begin{enumerate}[label=\arabic*.]
+\item La presenza di una batteria
+\item La connessione in rete
+\item L’uso di un'app mobile
+\item L’integrazione con un PC
+\end{enumerate}
+\textbf{Q2: Quale elemento riduce la probabilità di meta-stabilità?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Schmitt-trigger
+\item DAC
+\item EEPROM
+\item ADC
+\end{enumerate}
+\textbf{Q3: Un possibile difetto del convertitore A/D mediante Tracking:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Potrebbe essere lento nell'inseguire il segnale da convertire
+\item Tutte le affermazioni sono corrette
+\item Fa uso della ricerca binaria, con conseguente imprecisione
+\item Può portare alla meta-stabilità
+\end{enumerate}
+\textbf{Q4: La comunicazione bus permette...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Trasmissione unidirezionale
+\item Solo due dispositivi alla volta, ma necessita indirizzamento
+\item Collegamento di più dispositivi, ma necessita indirizzamento
+\item Comunicazione wireless
+\end{enumerate}
+\textbf{Q5: Quali sono le linee usate da I2C?}
+
+\begin{enumerate}[label=\arabic*.]
+\item CLK e DATA
+\item SCL e SDA
+\item RX e TX
+\item CS e MOSI
+\end{enumerate}
+\textbf{Q6: Cosa fa un dispositivo I2C se ha bisogno di più tempo?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Blocca la linea SDA
+\item Aumenta il baud rate
+\item Tiene la linea di clock bassa
+\item Invia un bit di pausa
+\end{enumerate}
+\textbf{Q7: I sensori a 2 pin funzionano tipicamente come:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Divisori di tensione
+\item Filtri attivi
+\item DAC digitali
+\item Amplificatori operazionali
+\end{enumerate}
+\textbf{Q8: La calibrazione di un sensore potrebbe essere necessaria:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per determinare il range di variazione delle tensioni lette
+\item Per evitare che la DigitalRead restituisca valori intermedi tra 0 ed 1
+\item Per determinare la corrente massima assorbita
+\item Per riavviare il circuito del sensore in caso di inutilizzo prolungato
+\end{enumerate}
+\textbf{Q9: Qual è la funzione di `ledcAttach()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Configurare il PWM avanzato
+\item Attaccare un interrupt
+\item Configurare un pin analogico
+\item Stabilire comunicazione UART
+\end{enumerate}
+\textbf{Q10: Quando si usa dacWrite invece di PWM?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Quando serve un segnale digitale
+\item Quando si usano motori
+\item Quando si vuole risparmiare memoria
+\item Quando serve un’uscita analogica precisa
+\end{enumerate}
+\textbf{Q11: Cosa è inopportuno porre dentro una ISR:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un insieme di istruzioni ad alta latenza
+\item Un insieme di istruzioni che usi variabili booleane
+\item Un insieme di istruzioni che modificano variabili locali
+\item Un insieme di istruzioni che modificano variabili globali
+\end{enumerate}
+\textbf{Q12: Qual è la funzione principale di $BLYNK\_WRITE(V0)$?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Gestire aggiornamenti da dashboard verso il dispositivo
+\item Inviare messaggi via SPI o I2C
+\item Scrivere dati sul cloud
+\item Eseguire codice asincrono in ambiente mobile
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.25 \times 10^5$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.125 \times 10^6$ bytes
+\item $2 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: In un sistema IoT occorre gestire l'acquisizione di burst di dati caratterizzati da un tempo di silenzio $t_{off}=50\mu sec$. Ogni burst ha una durata $t_{ON}$ che puo' variare da $t_{ON\_min}$ uguale a $0.1 sec$ a $4 sec$. In ciascun periodo $t_{ON}$ arrivano sempre 2MB, con arrivi distribuiti uniformemente.  Assumendo una gestione con interrupt e $T_{ISR}=1 \mu sec$ calcolare il $W_{MAX}$ (interrupt overhead) per smaltire correttamente il traffico bursty sopra descritto.  Indicare l'opzione corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.5
+\item Nessuna delle altre opzioni
+\item 0.05
+\item 0.1
+\end{enumerate}
+\textbf{Q15: Sia dato un sistema IoT in cui si voglia valutare la massima frequenza di segnale acquisibile da una sorgente analogica, espressa in byte/sec. Assumendo una gestione del sistema di I/O con polling, con $T_{TR}=100\mu sec$ e $\eta_{Poll}=0.5$, indicare la risposta corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.015\times10^3 byte/sec$
+\item $0.15\times10^3 byte/sec$
+\item $0.25\times10^4 byte/sec$
+\item $0.11\times10^3 byte/sec$
+\end{enumerate}
+\textbf{Q16: Si utilizzi un sistema di gestione dell’I/O basato sul DMA per trasferire N bytes di dati dall’I/O. Si assuma una architettura Harvard, una percentuale di conflitti f diversa da 0 e una politica "CPU waits for DMA". Quale fra le seguenti affermazioni è corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il Throughput di I/O diminuisce all’aumentare di f
+\item Il Throughput di I/O raddoppia se f si dimezza
+\item Nessuna delle altre opzioni
+\item Il Throughput di I/O è indipendente da f
+\end{enumerate}
+\textbf{Q17: Si utilizzi un sistema di gestione dell’I/O basato sul DMA per trasferire N bytes di dati dall’I/O. Si assuma una architettura Harvard, una percentuale di conflitti f diversa da 0 e una politica "CPU waits for DMA". Quale fra le seguenti affermazioni è corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il Throughput di I/O diminuisce all’aumentare di f
+\item Il Throughput di I/O dipende dal valore di f
+\item Nessuna delle altre opzioni
+\item Il Throughput di I/O raddoppia se f si dimezza
+\end{enumerate}
+\textbf{Q18: In un sistema IoT con due sorgenti analogiche caratterizzate dallo stesso valore di $f_{MAX[segnale]}$ espresso in byte/sec, assumendo una catena di acquisizione con un unico convertitore A/D, selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il massimo throughput di I/O deve essere minore o uguale a $8 \times f_{MAX[segnale]}$ byte/sec
+\item Il massimo throughput di I/O deve essere minore o uguale a $2 \times f_{MAX[segnale]}$ byte/sec
+\item Il massimo throughput di I/O deve essere almeno pari a $4 \times f_{MAX[segnale]}$ byte/sec
+\item Nessuna delle opzioni
+\end{enumerate}
+\textbf{Q19: In un sistema di I/O con interrupt, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item È pari al max throughput di I/O che si può scambiare
+\item Non dipende da $T_{ISR}$
+\item Non dipende dall’interrupt overhead W
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non dipende da $X_M$
+\item Nessuna delle altre opzioni
+\item Non dipende da W
+\item E' direttamente proporzionale al valore $T_{TR}$
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il ruolo del MIST Computing è principalmente quello di ridurre la complessità del software a bordo dei nodi IoT per limitare il consumo di potenza del nodo
+\item Nessuna delle altre risposte
+\item L’uso del MIST Computing, in alcuni scenari che prevedono comunicazioni wireless, comporta un maggior consumo di energia del nodo IoT dovuto alla trasmissione dati
+\item L’uso congiunto di Fog e MIST computing in un sistema IoT normalmente serve ad evitare l’utilizzo del Cloud Computing
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD16]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Quale memoria conserva i dati anche se il dispositivo è spento?}
+
+\begin{enumerate}[label=\arabic*.]
+\item SRAM (Static RAM)
+\item Stack
+\item Flash
+\item DRAM (Dynamic RAM)
+\end{enumerate}
+\textbf{Q2: A cosa serve un synchronizer?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Accelerare il clock
+\item Aumentare la precisone del DAC
+\item Ridurre la probabilità di meta-stabilità
+\item Gestire la memoria
+\end{enumerate}
+\textbf{Q3: Quando è necessario l’I/O analogico?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Quando il livello di tensione trasporta informazione
+\item Per convertire dati binari in stringhe
+\item Per ridurre il consumo energetico
+\item Solo per segnali digitali rapidi
+\end{enumerate}
+\textbf{Q4: Nella comunicazione sincrona...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ogni dispositivo usa il proprio clock
+\item I clock di trasmissione e ricezione sono collegati
+\item Non è necessaria una linea di clock
+\item Si usano sempre 4 linee dati
+\end{enumerate}
+\textbf{Q5: L’interfaccia I2C è...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Asincrona, point-to-point
+\item Sincrona, bus-based, half-duplex
+\item Full-duplex, master-master
+\item Solo per segnali analogici
+\end{enumerate}
+\textbf{Q6: In una interfaccia SPI il master:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Comunica a tutti i destinatari, ma solo lo slave che riconosce proprio indirizzo risponde
+\item Può comunicare simultaneamente ad un insieme di destinatari
+\item Seleziona uno slave pilotando il segnale di clock
+\item Seleziona uno slave mediante un segnale apposito (SS)
+\end{enumerate}
+\textbf{Q7: A cosa serve la fase di calibrazione nei sensori luce?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Per rilevare il range di valori utili
+\item Per stabilire un valore fisso di tensione
+\item Per impostare il colore del LED
+\item Per impostare la frequenza del LED
+\end{enumerate}
+\textbf{Q8: L'upload del programma alla memoria flash del microcontrollore è necessario:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Ogni qual volta si modifica il circuito sulla breadboard
+\item Ogni qual volta si toglie l'alimentazione alla board
+\item Ogni qual volta si modifica il codice del programma
+\item Ogni qual volta si esegue il codice del programma
+\end{enumerate}
+\textbf{Q9: Quale tra questi segnali è generato da `analogWrite()` su ESP32?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Segnale analogico puro
+\item Segnale digitale ad alta frequenza
+\item Segnale PWM
+\item Segnale sinusoidale
+\end{enumerate}
+\textbf{Q10: Cosa indica `millis()` su ESP32?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Pausa espressa in millisecondi
+\item Millisecondi trascorsi dall'avvio
+\item Frequenza del clock in millisecondi
+\item Durata di un ciclo PWM
+\end{enumerate}
+\textbf{Q11: Impostando CHANGE come condizione interrupt su pin 7, avviene che:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Tutte le ISR del codice sono invocate quando vi è un cambiamento del pin 7
+\item La ISR è invocata quando si modifica il numero di interrupt associato al pin 7
+\item Il pin 7 è letto dalla ISR sul fronte di salita o discesa del clock
+\item La ISR è invocata su di un fronte di salita o discesa nel pin 7
+\end{enumerate}
+\textbf{Q12: A cose serve la funzione $Blink.run()$}
+
+\begin{enumerate}[label=\arabic*.]
+\item Configura i pin GPIO per il cloud dentro setup()
+\item Gestisce gli interrupt in alternativa ad attachInterrupt()
+\item Apre una nuova connessione Wi-Fi per gli interrupt
+\item Gestisce la connessione cloud e messaggi virtuali dentro loop()
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.125 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $2 \times 10^6$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: Assumendo una gestione del sistema di I/O con Interrupt, con $T_{ISR}=100\mu sec$, calcolare il valore massimo di $W$ affinche' si possano acquisire 10 sorgenti analogiche ciascuna caratterizzata da una $f_{MAX[segnale]}$ di 0.3Kbyte/sec.}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.73
+\item 0.5
+\item 0.81
+\item 0.66
+\end{enumerate}
+\textbf{Q15: In un sistema IoT occorre gestire l'acquisizione di un burst di dati con tempo di silenzio $t_{off}=50 \mu sec$. Ogni burst ha una durata $t_{on}$ che puo' variare da $0.1 sec$ a $4 sec$. In ciascun periodo $t_{on}$ arrivano sempre 2MB, con arrivi distribuiti uniformente. Assumendo una gestione con polling, calcolare il valore max di $T_{TR}$, assumendo $W=0.1$ e $X_M = 100$, affinche' possa essere smaltito correttamente il traffico bursty nell'ipotesi di $t_{ON\_min}=1 sec$.}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item $3.5 \mu sec$
+\item $0.045\times10^{-6}$ sec/byte
+\item $0.005\times10^{-8}$ sec/byte
+\end{enumerate}
+\textbf{Q16: In un sistema di I/O gestito con il DMA, architettura Harvard, $f=0.25$, il max throughput di I/O ottenibile scambiando N bytes:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item E' direttamente proporzionale al valore N
+\item E' almeno il doppio di quello ottenibile con $f=0$
+\item E' inversamente proporzionale al valore N
+\end{enumerate}
+\textbf{Q17: Si utilizzi un sistema di gestione dell’I/O basato sul DMA per trasferire N bytes di dati dall’I/O. Si assuma una architettura Harvard, una percentuale di conflitti f diversa da 0 e una politica "CPU waits for DMA". Quale fra le seguenti affermazioni è corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item A causa del $CPU_{TIME\_IO}$ che la CPU spende per la gestione dei conflitti, superato un certo valore di f non si ha più alcun vantaggio ad utilizzare il DMA
+\item Il $CPU_{TIME\_IO}$ che la CPU spende per l’I/O diminuisce al crescere di N
+\item Nessuna delle altre opzioni
+\item Il $CPU_{TIME\_IO}$ che la CPU spende per l’I/O non dipende da N
+\end{enumerate}
+\textbf{Q18: In un sistema IoT in cui sono presenti 16 sorgenti analogiche identiche, ciascuna caratterizzata da una $f_{MAX[segnale]}$ pari a K. Si decide di utilizzare un multiplexer analogico 16:1 che alimenta a valle un Sample\\\&Hold e un convertitore A/D nella catena di acquisizione. Selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$
+\item Nessuna delle altre opzioni
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle sia 32 volte più performante
+\item Il componente Sample\&Hold a valle deve avere una performance almeno pari a 32 volte quella richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle abbia anch’esso una performance 32 volte superiore
+\end{enumerate}
+\textbf{Q19: Considerando l’utilizzo dell’interrupt come tecnica di gestione dell’I/O:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il vettore di interrupt serve principalmente ad indicare alla CPU la priorità di gestione della ISR
+\item La gestione della priorità serve ad abbattere l’interrupt overhead
+\item Nessuna delle opzioni riportate
+\item L’interrupt overhead W può essere diminuito se si utilizza una gestione vettorizzata dell’interrupt
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item Non dipende da $X_M$
+\item E' inversamente proporzionale al valore $T_{TR}$
+\item Non dipende da W
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre risposte
+\item Il Fog Computing serve soprattutto a interfacciare i nodi IoT con la piattaforma IoT
+\item il Fog Computing serve soprattutto a esporre interfacce di programmazione più agevoli agli sviluppatori di applicazioni, nascondendo loro la complessità dei livelli più bassi della gerarchia
+\item Il Fog Computing non si utilizza nel caso vi siano vincoli troppo stringenti di real time
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD17]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Quale memoria conserva i dati anche se il dispositivo è spento?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Stack
+\item SRAM (Static RAM)
+\item DRAM (Dynamic RAM)
+\item Flash
+\end{enumerate}
+\textbf{Q2: Il Binary-weighted Resistor Circuit}
+
+\begin{enumerate}[label=\arabic*.]
+\item Serve a risolvere il problema della meta-stabilità
+\item Serve in caso di pin floating (non connessi ad alcun input)
+\item Utilizza un insieme di resistenze di valore diverso
+\item Può essere utilizzato per implementare un convertitore da analogico a digitale
+\end{enumerate}
+\textbf{Q3: Qual è un limite della conversione analogico-digitale?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Perdita di informazioni per bassa risoluzione
+\item Nessun supporto a segnali digitali
+\item Non compatibilità con le resistenze
+\item Consumo energetico troppo elevato
+\end{enumerate}
+\textbf{Q4: La comunicazione bus permette...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Trasmissione unidirezionale
+\item Comunicazione wireless
+\item Solo due dispositivi alla volta, ma necessita indirizzamento
+\item Collegamento di più dispositivi, ma necessita indirizzamento
+\end{enumerate}
+\textbf{Q5: In una interfaccia I2C:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Seleziona uno slave mediante pilotando il segnale di clock
+\item Presenta un bus con due linee delle MOSI e MISO
+\item Il bus è costituito da due linee, di cui una è il clock
+\item Il bus è costituito da due linee, più una terza linea per il clock
+\end{enumerate}
+\textbf{Q6: Come viene rilevato l’inizio di un pacchetto UART?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Dall’assenza di segnale
+\item Dal bit di parità
+\item Dal clock condiviso
+\item Dal fronte di discesa del bit di start
+\end{enumerate}
+\textbf{Q7: Qual è il problema del “floating pin” quando un pulsante è aperto?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il LED si spegne automaticamente
+\item La corrente diventa negativa
+\item Il pin può assumere valori casuali
+\item Il pin si danneggia
+\end{enumerate}
+\textbf{Q8: Se connetto una board ESP32 all'alimentazione:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Azzera il proprio contenuto flash
+\item Nessuna delle altre risposte
+\item Inizia ad eseguire l'ultimo codice caricato sulla flash
+\item Non esegue niente finchè non si immette un nuovo codice sulla flash
+\end{enumerate}
+\textbf{Q9: Quando si usa dacWrite invece di PWM?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Quando serve un’uscita analogica precisa
+\item Quando serve un segnale digitale
+\item Quando si vuole risparmiare memoria
+\item Quando si usano motori
+\end{enumerate}
+\textbf{Q10: Su quali pin è possibile utilizzare `dacWrite()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Su tutti i pin digitali
+\item Solo su alcuni pin
+\item Su pin che vanno scelti in fase di setup
+\item Su tutti i pin analogici
+\end{enumerate}
+\textbf{Q11: Cosa è inopportuno porre dentro una ISR:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Un insieme di istruzioni che modificano variabili globali
+\item Un insieme di istruzioni che modificano variabili locali
+\item Un insieme di istruzioni che usi variabili booleane
+\item Un insieme di istruzioni ad alta latenza
+\end{enumerate}
+\textbf{Q12: Nell'ambito Blynk, dove si inseriscono Template ID e l’Auth Token?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nella sezione di setup
+\item Nella funzione loop
+\item Nella memoria EEPROM
+\item Nella fase di calibrazione di un sensore
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.125 \times 10^6$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\item $2 \times 10^6$ bytes
+\end{enumerate}
+\textbf{Q14: Assumendo una gestione del sistema di I/O con Interrupt, con $T_{ISR}=100\mu sec$, calcolare il valore massimo di $W$ affinche' si possano acquisire 10 sorgenti analogiche ciascuna caratterizzata da una $f_{MAX[segnale]}$ di 0.3Kbyte/sec.}
+
+\begin{enumerate}[label=\arabic*.]
+\item 0.5
+\item 0.66
+\item 0.73
+\item 0.81
+\end{enumerate}
+\textbf{Q15: Sia dato un sistema IoT in cui si voglia valutare la massima frequenza di segnale acquisibile da una sorgente analogica, espressa in byte/sec. Assumendo una gestione del sistema di I/O con polling, con $T_{TR}=100\mu sec$ e $\eta_{Poll}=0.5$, indicare la risposta corretta:}
+
+\begin{enumerate}[label=\arabic*.]
+\item $0.11\times10^3 byte/sec$
+\item $0.015\times10^3 byte/sec$
+\item $0.25\times10^4 byte/sec$
+\item $0.15\times10^3 byte/sec$
+\end{enumerate}
+\textbf{Q16: Data una gestione dell’I/O basata su DMA per trasferire burst di dati dall’I/O e che un periodo di silenzio $T_{off}$ di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento. Qual è il massimo throughput che si può smaltire in ciascun burst, nel periodo $T_{ON}$ in cui arrivano N bytes, nel caso di una architettura Harvard, percentuale di conflitti f non nulla, e una politica di gestione dei conflitti di tipo "DMA waiting for CPU" e assumendo $T_{LOAD\_STORE} = 2 \times T_{tr\_DMA}$}
+
+\begin{enumerate}[label=\arabic*.]
+\item $\frac{1}{T_{tr\_DMA}}$
+\item Nessuna delle altre opzioni
+\item $0.5 \times \frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item $\frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\end{enumerate}
+\textbf{Q17: Data una gestione dell’I/O basata su DMA per trasferire burst di dati dall’I/O e che un periodo di silenzio $T_{off}$ di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento. Qual è il massimo throughput che si può smaltire in ciascun burst, nel periodo $T_{ON}$ in cui arrivano N bytes, nel caso di una architettura Harvard, percentuale di conflitti f non nulla, e una politica di gestione dei conflitti di tipo "DMA waiting for CPU" ?}
+
+\begin{enumerate}[label=\arabic*.]
+\item $\frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item $\frac{1}{T_{tr\_DMA}}$
+\item $0.5 \times \frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q18: In un sistema IoT in cui sono presenti 16 sorgenti analogiche identiche, ciascuna caratterizzata da una $f_{MAX[segnale]}$ pari a K. Si decide di utilizzare un multiplexer analogico 16:1 che alimenta a valle un Sample\\\&Hold e un convertitore A/D nella catena di acquisizione. Selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$
+\item Il componente Sample\&Hold a valle deve avere una performance almeno pari a 32 volte quella richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle abbia anch’esso una performance 32 volte superiore
+\item Nessuna delle altre opzioni
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle sia 32 volte più performante
+\end{enumerate}
+\textbf{Q19: In un sistema di I/O con interrupt, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile}
+
+\begin{enumerate}[label=\arabic*.]
+\item È pari al max throughput di I/O che si può scambiare
+\item Nessuna delle altre opzioni
+\item Non dipende dall’interrupt overhead W
+\item Non dipende da $T_{ISR}$
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item E' direttamente proporzionale al valore $T_{TR}$
+\item Non dipende da W
+\item Non dipende da $X_M$
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item L’uso congiunto di Fog e MIST computing in un sistema IoT normalmente serve ad evitare l’utilizzo del Cloud Computing
+\item Il ruolo del MIST Computing è principalmente quello di ridurre la complessità del software a bordo dei nodi IoT per limitare il consumo di potenza del nodo
+\item L’uso del MIST Computing, in alcuni scenari che prevedono comunicazioni wireless, comporta un maggior consumo di energia del nodo IoT dovuto alla trasmissione dati
+\item Nessuna delle altre risposte
+\end{enumerate}
+\end{multicols}
+
+\newpage
+
+\section*{IoT Systems and Technologies \footnotesize [8DE0ADD18]}
+{\footnotesize Nome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Cognome:\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Mat:\_\_\_\_\_\_\_\_}
+\begin{multicols}{2}
+
+\textbf{Q1: Quale memoria conserva i dati anche se il dispositivo è spento?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Stack
+\item Flash
+\item DRAM (Dynamic RAM)
+\item SRAM (Static RAM)
+\end{enumerate}
+\textbf{Q2: Qual è lo svantaggio del circuito resistivo binary-weight per DAC?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non funziona con segnali digitali
+\item Ha alta latenza
+\item È troppo lento
+\item Richiede resistenze di precisione
+\end{enumerate}
+\textbf{Q3: Il Binary-weighted Resistor Circuit}
+
+\begin{enumerate}[label=\arabic*.]
+\item Utilizza un insieme di resistenze di valore diverso
+\item Serve a risolvere il problema della meta-stabilità
+\item Può essere utilizzato per implementare un convertitore da analogico a digitale
+\item Serve in caso di pin floating (non connessi ad alcun input)
+\end{enumerate}
+\textbf{Q4: Il vantaggio di un'interfaccia differenziale è...}
+
+\begin{enumerate}[label=\arabic*.]
+\item Evita l’uso di clock
+\item Resiste al rumore su lunghe distanze
+\item Occupa meno fili
+\item Ha minore velocità
+\end{enumerate}
+\textbf{Q5: Cos'è un data overrun in UART?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Una perdita di clock
+\item Un errore di sincronizzazione
+\item Una trasmissione senza stop bit
+\item Il buffer ricezione  è sovrascritto da nuovi dati
+\end{enumerate}
+\textbf{Q6: Quali sono i pin principali di una UART?}
+
+\begin{enumerate}[label=\arabic*.]
+\item TX e RX
+\item SDA e SCL
+\item MOSI e MISO
+\item CLK e EN
+\end{enumerate}
+\textbf{Q7: Se connetto una board ESP32 all'alimentazione:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Azzera il proprio contenuto flash
+\item Nessuna delle altre risposte
+\item Inizia ad eseguire l'ultimo codice caricato sulla flash
+\item Non esegue niente finchè non si immette un nuovo codice sulla flash
+\end{enumerate}
+\textbf{Q8: Per un LED, tipicamente è necessaria:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Resistenza di qualche centinaio di Ohm in parallelo
+\item Resistenza di qualche Mega Ohm in serie
+\item Resistenza di qualche Mega Ohm in parallelo
+\item Resistenza di qualche centinaio di Ohm in serie
+\end{enumerate}
+\textbf{Q9: Perché è sconsigliato usare `delay()` in applicazioni complesse?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Consuma più energia
+\item Disattiva gli interrupt
+\item Blocca l’esecuzione del programma
+\item Richiede molta memoria
+\end{enumerate}
+\textbf{Q10: Su quali pin è possibile utilizzare `dacWrite()`?}
+
+\begin{enumerate}[label=\arabic*.]
+\item Su tutti i pin analogici
+\item Su pin che vanno scelti in fase di setup
+\item Su tutti i pin digitali
+\item Solo su alcuni pin
+\end{enumerate}
+\textbf{Q11: Impostando CHANGE come condizione interrupt su pin 7, avviene che:}
+
+\begin{enumerate}[label=\arabic*.]
+\item La ISR è invocata quando si modifica il numero di interrupt associato al pin 7
+\item Il pin 7 è letto dalla ISR sul fronte di salita o discesa del clock
+\item Tutte le ISR del codice sono invocate quando vi è un cambiamento del pin 7
+\item La ISR è invocata su di un fronte di salita o discesa nel pin 7
+\end{enumerate}
+\textbf{Q12: A cose serve la funzione $Blink.run()$}
+
+\begin{enumerate}[label=\arabic*.]
+\item Gestisce gli interrupt in alternativa ad attachInterrupt()
+\item Configura i pin GPIO per il cloud dentro setup()
+\item Gestisce la connessione cloud e messaggi virtuali dentro loop()
+\item Apre una nuova connessione Wi-Fi per gli interrupt
+\end{enumerate}
+\textbf{Q13: Dato una gestione dell’I/O basata su DMA per trasferire burst di dati, si assuma che il periodo di silenzio  ($T_{off}$) di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento e che nel periodo $T_{ON} = 0.2$ sec arrivino un massimo di $N=10^6$ bytes. Calcolare il numero massimo $N_{max}$ di bytes in ciascun burst che possono essere trasferiti attraverso il DMA in una architettura Harvard con percentuale di conflitti $f = 0.3$ gestiti con DMA waits for CPU e dato $T_{LOAD\/STORE} = 2 \times T_{tr\_DMA}$ e $T_{tr\_DMA} = 10^{-6}$ sec/byte.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $2 \times 10^6$ bytes
+\item $0.125 \times 10^6$ bytes
+\item $0.71 \times 2 \times 10^6$ bytes
+\item $0.25 \times 10^5$ bytes
+\end{enumerate}
+\textbf{Q14: In un sistema IoT occorre gestire l'acquisizione di burst di dati caratterizzati da un tempo di silenzio $t_{off}=50\mu sec$. Ogni burst ha una durata $t_{ON}$ che puo' variare da $t_{ON\_min}$ uguale a $0.1 sec$ a $4 sec$. In ciascun periodo $t_{ON}$ arrivano sempre 2MB, con arrivi distribuiti uniformemente.  Assumendo una gestione con interrupt e overhead $W=0.3$ calcolare il valore massimo di $T_{ISR}$ per acquisire correttamente i dati del traffico bursty sopra descritto.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $25\times10^{-5}$ sec/byte
+\item Nessuna delle altre opzioni
+\item $3.8\times10^{-8}$ sec/byte
+\item $0.01\times10^{-6}$ sec/byte
+\end{enumerate}
+\textbf{Q15: In un sistema IoT occorre gestire l'acquisizione di un burst di dati con tempo di silenzio $t_{off}=50 \mu sec$. Ogni burst ha una durata $t_{on}$ che puo' variare da $0.1 sec$ a $4 sec$. In ciascun periodo $t_{on}$ arrivano sempre 2MB, con arrivi distribuiti uniformente. Assumendo una gestione con polling, calcolare il valore max di $T_{TR}$, assumendo $W=0.1$ e $X_M = 100$, affinche' possa essere smaltito correttamente il traffico bursty nell'ipotesi di $t_{ON\_min}=1 sec$.}
+
+\begin{enumerate}[label=\arabic*.]
+\item $3.5 \mu sec$
+\item Nessuna delle altre opzioni
+\item $0.045\times10^{-6}$ sec/byte
+\item $0.005\times10^{-8}$ sec/byte
+\end{enumerate}
+\textbf{Q16: In un sistema di gestione dell’I/O con DMA si hanno migliori prestazioni per il trasferimento di N byte rispetto ad un sistema di gestione basato sull’interrupt soltanto se:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Si utilizza una architettura Harvard
+\item Non ci sono conflitti (f = 0)
+\item N è sufficientemente alto
+\item Nessuna delle altre opzioni
+\end{enumerate}
+\textbf{Q17: Data una gestione dell’I/O basata su DMA per trasferire burst di dati dall’I/O e che un periodo di silenzio $T_{off}$ di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento. Qual è il massimo throughput che si può smaltire in ciascun burst, nel periodo $T_{ON}$ in cui arrivano N bytes, nel caso di una architettura Harvard, percentuale di conflitti f non nulla, e una politica di gestione dei conflitti di tipo "DMA waiting for CPU" e assumendo $T_{LOAD\_STORE} = 2 \times T_{tr\_DMA}$}
+
+\begin{enumerate}[label=\arabic*.]
+\item $\frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item $\frac{1}{ 2 \times f + 1} \times \frac{1}{T_{tr\_DMA}} $
+\item $0.5 \times \frac{N}{s+ 2 \times f \times N + N} \times \frac{1}{T_{tr\_DMA}} $
+\item $\frac{1}{T_{tr\_DMA}}$
+\end{enumerate}
+\textbf{Q18: In un sistema IoT in cui sono presenti 16 sorgenti analogiche identiche, ciascuna caratterizzata da una $f_{MAX[segnale]}$ pari a K. Si decide di utilizzare un multiplexer analogico 16:1 che alimenta a valle un Sample\\\&Hold e un convertitore A/D nella catena di acquisizione. Selezionare quale delle seguenti opzioni è vera:}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$
+\item Il componente Sample\&Hold a valle può mantenere la stessa performance richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle sia 32 volte più performante
+\item Nessuna delle altre opzioni
+\item Il componente Sample\&Hold a valle deve avere una performance almeno pari a 32 volte quella richiesta nel caso vi fosse un'unica sorgente con $f_{MAX[segnale]} = K$, purché il convertitore a valle abbia anch’esso una performance 32 volte superiore
+\end{enumerate}
+\textbf{Q19: In un sistema di I/O con interrupt il massimo throughput di I/O ottenibile scambiando N byte}
+
+\begin{enumerate}[label=\arabic*.]
+\item Non dipende da N
+\item Dipende da N
+\item Nessuna delle precedenti
+\item Non dipende dall’interrupt overhead W
+\end{enumerate}
+\textbf{Q20: In un sistema di I/O gestito con il polling, la massima frequenza di segnale $f_{MAX[segnale]}$ acquisibile:}
+
+\begin{enumerate}[label=\arabic*.]
+\item E' direttamente proporzionale al valore $T_{TR}$
+\item Nessuna delle altre opzioni
+\item Non dipende da W
+\item Non dipende da $X_M$
+\end{enumerate}
+\textbf{Q21: Con riferimento all’architettura generale di un sistema IoT dire quale fra le seguenti opzioni è quella vera}
+
+\begin{enumerate}[label=\arabic*.]
+\item Il Fog Computing serve soprattutto a interfacciare i nodi IoT con la piattaforma IoT
+\item Il Fog Computing non si utilizza nel caso vi siano vincoli troppo stringenti di real time
+\item Nessuna delle altre risposte
+\item il Fog Computing serve soprattutto a esporre interfacce di programmazione più agevoli agli sviluppatori di applicazioni, nascondendo loro la complessità dei livelli più bassi della gerarchia
+\end{enumerate}
+\end{multicols}
+
+\end{document}

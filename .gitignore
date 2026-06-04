@@ -1,3 +1,11 @@
 /new_set/
 /gen_iotst.sh
 /courses_user_tests.properties
+.DS_Store
+*.class
+/build/
+/dist/
+/out/
+/node_modules/
+.idea/
+*.iml

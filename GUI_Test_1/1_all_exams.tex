@@ -1,0 +1,27 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage{setspace}
+\geometry{a4paper, margin=0.75in}
+\setstretch{0.8}
+\begin{document}
+
+\section*{GUI Test \footnotesize [CEDF15191]}
+{\footnotesize sub}
+\begin{multicols}{2}
+
+\textbf{Q1: Si utilizzi un sistema di gestione dell’I/O basato sul DMA per trasferire burst di dati dall’I/O. Si assuma che il periodo di silenzio $T_{off}$ di ciascun burst venga utilizzato per programmare il DMA e per gestire l’interrupt di fine trasferimento. Qual è il massimo throughput che si può smaltire in ciascun burst, nel periodo $T_{ON}$ in cui arrivano N bytes, nel caso si utilizzi una architettura Harvard, percentuale di conflitti f diversa da 0, e una politica di gestione dei conflitti di tipo "DMA waiting for CPU" e assumendo $T_{LOAD\_STORE} = 2 \times T_{tr\_DMA}$}
+
+\begin{enumerate}[label=\arabic*.]
+\item Nessuna delle altre opzioni
+\item $0.5 \times \frac{N,s+ 2\times f \times N + N} \times \frac{1,T_{tr\_DMA}} $
+\item $\frac{N,s+ 2\times f \times N + N} \times \frac{1,T_{tr\_DMA}} $
+\item $\frac{1}{T_{tr\_DMA}$
+\end{enumerate}
+\end{multicols}
+
+\end{document}
