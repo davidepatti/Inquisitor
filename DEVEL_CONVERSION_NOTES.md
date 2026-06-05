@@ -47,7 +47,7 @@ Important defaults:
 - Seed defaults to today's date as `yyyyMMdd`.
 - Heading defaults to `Exam` in the CLI, or to the selected course name in the Electron UI.
 - Output folder is `<sanitized-heading>_<seed>`.
-- Output files are `<seed>_all_exams.tex`, `<seed>_results.csv`, and `<seed>_answers_key.txt`.
+- Output files are `<exam-id-prefix>_all_exams.tex`, `<exam-id-prefix>_results.csv`, and `<exam-id-prefix>_answers_key.txt`; the prefix is the shared 8-hex SHA-256 prefix used at the start of each exam ID.
 
 ## Data Formats to Preserve
 

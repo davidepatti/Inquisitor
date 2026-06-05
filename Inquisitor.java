@@ -26,7 +26,7 @@ public class Inquisitor {
         return Paths.get(".");
     }
 
-    private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
+    private static String generateExamIdPrefix(String commandLineArgs) {
         try {
             String input = commandLineArgs;
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -37,10 +37,14 @@ public class Inquisitor {
                 if(hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
-            return hexString.append(examNumber).toString().toUpperCase(); // e.g., "5C8A72F0"
+            return hexString.toString().toUpperCase();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not supported", e);
         }
+    }
+
+    private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
+        return generateExamIdPrefix(commandLineArgs) + examNumber;
     }
 
     // Class to represent a question
@@ -215,11 +219,11 @@ public class Inquisitor {
             }
         }
 
-        // Initialize output filenames with seed prefix
-        String seedPrefix = String.valueOf(seed);
-        String outputFileName = seedPrefix + "_all_exams.tex";
-        String csvFileName = seedPrefix + "_results.csv";
-        String answersKeyFileName = seedPrefix + "_answers_key.txt";
+        // Initialize output filenames with the shared 8-hex exam ID prefix.
+        String filePrefix = generateExamIdPrefix(commandLineString);
+        String outputFileName = filePrefix + "_all_exams.tex";
+        String csvFileName = filePrefix + "_results.csv";
+        String answersKeyFileName = filePrefix + "_answers_key.txt";
 
         Path outputFilePath = outputFolderPath.resolve(outputFileName);
         Path csvFilePath = outputFolderPath.resolve(csvFileName);
@@ -344,7 +348,7 @@ public class Inquisitor {
             writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents, commandLineString);
             System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
 
-            // Write answers_key.txt with seed prefix
+            // Write answers_key.txt
             writeAnswersKey(examDataList, answersKeyFilePath.toString());
             System.out.println("Generated " + answersKeyFileName + " successfully.");
 
@@ -574,7 +578,7 @@ public class Inquisitor {
     }
 
     /**
-     * Writes the answers_key.txt file with seed prefix.
+     * Writes the answers_key.txt file.
      *
      * @param examDataList   List of ExamData containing exam details.
      * @param answersKeyPath Path to the answers_key.txt file.

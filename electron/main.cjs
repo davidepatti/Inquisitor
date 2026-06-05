@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const path = require("path");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 
 const projectRoot = path.resolve(__dirname, "..");
@@ -353,16 +354,21 @@ function sanitizeHeading(heading) {
   return String(heading || "Exam").trim().replace(/\s+/g, "_");
 }
 
-function buildOutputPaths(config) {
-  const seed = Number(config.seed);
+function generateExamIdPrefix(commandLineArgs) {
+  return crypto.createHash("sha256").update(commandLineArgs).digest("hex").slice(0, 8).toUpperCase();
+}
+
+function buildOutputPaths(config, generatorArgs = buildJavaArgs(config)) {
+  const seed = Number(config.seed || defaultSeedForToday());
   const heading = config.heading && config.heading.trim() ? config.heading.trim() : "Exam";
   const outputDir = path.resolve(config.basePath, `${sanitizeHeading(heading)}_${seed}`);
+  const filePrefix = generateExamIdPrefix(generatorArgs.join(" "));
   return {
     outputDir,
-    texPath: path.join(outputDir, `${seed}_all_exams.tex`),
-    csvPath: path.join(outputDir, `${seed}_results.csv`),
-    answersPath: path.join(outputDir, `${seed}_answers_key.txt`),
-    pdfPath: path.join(outputDir, `${seed}_all_exams.pdf`)
+    texPath: path.join(outputDir, `${filePrefix}_all_exams.tex`),
+    csvPath: path.join(outputDir, `${filePrefix}_results.csv`),
+    answersPath: path.join(outputDir, `${filePrefix}_answers_key.txt`),
+    pdfPath: path.join(outputDir, `${filePrefix}_all_exams.pdf`)
   };
 }
 
@@ -456,8 +462,9 @@ async function runGeneration(event, config) {
     throw new Error("Java CLI classes are missing. Run `npm run java:build` first.");
   }
 
-  const javaArgs = ["-cp", javaClassesDir, "Inquisitor", ...buildJavaArgs(config)];
-  const outputPaths = buildOutputPaths(config);
+  const generatorArgs = buildJavaArgs(config);
+  const javaArgs = ["-cp", javaClassesDir, "Inquisitor", ...generatorArgs];
+  const outputPaths = buildOutputPaths(config, generatorArgs);
 
   sendLog("Starting Java generator.");
   const javaExit = await runProcess("java", javaArgs, { cwd: projectRoot }, sendLog);
