@@ -103,7 +103,7 @@ Course profile format:
 Generated artifact behavior:
 
 - LaTeX output uses an A4 article layout, two columns, smaller margins, and numbered answers.
-- CSV output includes student fields, exam ID, seed, answer-entry formulas, per-question correctness formulas, and summary counters.
+- CSV output includes student fields, numeric exam number, derived correct-answer strings, answer-entry formulas, per-question c/w/x correctness formulas, and summary counters.
 - Answer key output lists each exam and the 1-based correct answer index for every question.
 - Exam IDs are SHA-256 based: the generator hashes the command-line argument string, takes the first 4 bytes as hex, and appends the exam number.
 

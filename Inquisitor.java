@@ -345,7 +345,7 @@ public class Inquisitor {
             System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
 
             // Write results.csv with new columns
-            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents, commandLineString);
+            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents);
             System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
 
             // Write answers_key.txt
@@ -472,16 +472,15 @@ public class Inquisitor {
     }
 
     /**
-     * Writes the results.csv file compatible with Google Sheets, including new columns and empty rows for students.
+     * Writes the results.csv file compatible with Google Sheets, including correction formulas for each student row.
      *
      * @param examDataList  List of ExamData containing exam details.
      * @param csvFileName   Name of the CSV file to create.
      * @param T             Number of questions per exam.
      * @param totalStudents Total number of students.
-     * @param commandLineString The string of command line arguments, for ID obfuscation.
      * @throws IOException If an I/O error occurs.
      */
-    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T, Integer totalStudents, String commandLineString) throws IOException {
+    private static void writeResultsCSV(List<ExamData> examDataList, String csvFileName, int T, Integer totalStudents) throws IOException {
         if (examDataList.isEmpty()) {
             System.out.println("No exams to write to CSV.");
             return;
@@ -489,9 +488,9 @@ public class Inquisitor {
 
         // Open CSV file for writing
         try (BufferedWriter csvWriter = new BufferedWriter(new FileWriter(csvFileName))) {
-            // Write header with new columns: "Surname", "Name", "Student ID"
+            // Write header with student data, exam number, expected answers, submitted answers, and correction fields.
             StringBuilder header = new StringBuilder();
-            header.append("Surname,Name,Student ID,Exam ID,Seed,answers");
+            header.append("Surname,Name,Student ID,Exam Number,Exam Answers,answers");
             for (int i = 1; i <= T; i++) {
                 header.append(",A").append(i);
             }
@@ -502,79 +501,69 @@ public class Inquisitor {
             csvWriter.write(header.toString());
             csvWriter.newLine();
 
-            // Calculate examInstances = totalStudents/totalExames
-            int examInstances = 1; // Default value
-            if (totalStudents != null && examDataList.size() > 0) {
-                double exactX = totalStudents/(double) examDataList.size();
-                examInstances = (int) Math.ceil(exactX);
-                if (examInstances < 1) {
-                    examInstances = 1;
-                }
+            int studentRows = (totalStudents != null) ? totalStudents : examDataList.size();
+            if (studentRows < 1) {
+                studentRows = 1;
             }
-
-            // For each exam, write a row and then examInstances empty rows
-            for (ExamData ed : examDataList) {
-                StringBuilder row = new StringBuilder();
-                row.append(",").append(",").append(","); // Empty cells for Surname, Name, Student ID
-                String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
-                row.append(obfuscatedExamId).append(",").append(ed.seed).append(",");
-                // Insert empty "answers" cell
-                row.append(",");
-
-                // For each A1..AT, insert formula referencing "answers" column, else empty
-                // "answers" is at column 6 (1-based)
-                int answersColNum = 6;
-                String answersColLetter = getColumnLetter(answersColNum);
-                int rowIndex = ed.examNumber + 1;
-                rowIndex = rowIndex+examInstances*(ed.examNumber-1);
-                for (int i = 1; i <= T; i++) {
-                    // Formula: =IF($COL_ANSWERSR<>""; MID($COL_ANSWERSR; K; 1); "")
-                    String formula = "=IF($" + answersColLetter + rowIndex + "<>\"\"; MID($" + answersColLetter + rowIndex + ";" + i + ";1); \"\")";
-                    row.append(formula);
-                    if (i < T) row.append(",");
-                }
-
-                // For each Q1..QT, insert formula as before, but update column indices
-                // A1..AT now start at column 7 (after answers), so Q1..QT start at 7+T = 7+T (1-based)
-                for (int i = 0; i < T; i++) {
-                    // Determine column letters
-                    int answerColNum = 7 + i; // A1 is col 7, A2 col 8, ..., so Q1 is col 7+T
-                    String answerColLetter = getColumnLetter(answerColNum);
-                    int correctIndex = ed.correctAnswerIndices.get(i) + 1;
-                    // Compare as string, not number
-                    String formula = "=IF(" + answerColLetter + rowIndex + "=\"" + correctIndex + "\";\"C\"; IF(" + answerColLetter + rowIndex + "=\"X\";\"X\";\"W\"))";
-                    row.append(",");
-                    row.append(formula);
-                }
-
-                // Update indices for Correct, Wrong, Not Given
-                int checkStartColNum = 7 + T; // Q1 starts after T Answer columns
-                int checkEndColNum = 7 + 2 * T - 1; // QT ends at this column
-                String checkStartColLetter = getColumnLetter(checkStartColNum);
-                String checkEndColLetter = getColumnLetter(checkEndColNum);
-                String range = checkStartColLetter + rowIndex + ":" + checkEndColLetter + rowIndex;
-                String correctCountFormula = "=COUNTIF(" + range + ";\"C\")";
-                String wrongCountFormula = "=COUNTIF(" + range + ";\"W\")";
-                String notGivenCountFormula = "=COUNTIF(" + range + ";\"X\")";
-                row.append(",").append(correctCountFormula);
-                row.append(",").append(wrongCountFormula);
-                row.append(",").append(notGivenCountFormula);
-                csvWriter.write(row.toString());
+            int rowIndex = 2; // First data row after the CSV header.
+            for (int i = 0; i < studentRows; i++) {
+                csvWriter.write(buildCorrectionCsvRow(examDataList, T, rowIndex));
                 csvWriter.newLine();
-                for (int i = 0; i < examInstances; i++) {
-                    StringBuilder emptyRow = new StringBuilder();
-                    // Total columns: 5 (Surname, Name, Student ID, Exam Number, Seed) + 1 ("answers") + 2*T (A<N>, Q<N>) + 3 (Correct, Wrong, Not Given)
-                    // So total columns = 6 + 2*T + 3 = 9 + 2*T
-                    int totalColumns = 9 + 2 * T;
-                    for (int j = 0; j < totalColumns - 1; j++) {
-                        emptyRow.append(",");
-                    }
-                    emptyRow.append(","); // Last column
-                    csvWriter.write(emptyRow.toString());
-                    csvWriter.newLine();
-                }
+                rowIndex++;
             }
         }
+    }
+
+    private static String buildCorrectionCsvRow(List<ExamData> examDataList, int T, int rowIndex) {
+        StringBuilder row = new StringBuilder();
+        row.append(",,,"); // Empty cells for Surname, Name, Student ID.
+        row.append(""); // Numeric exam number.
+        row.append(",");
+
+        String examNumberCell = "$D" + rowIndex;
+        String examAnswersCell = "$E" + rowIndex;
+        String studentAnswersCell = "$F" + rowIndex;
+        row.append(buildExamAnswersFormula(examDataList, examNumberCell));
+        row.append(",");
+        row.append(""); // Student answers string.
+
+        for (int i = 1; i <= T; i++) {
+            String formula = "=IF(" + studentAnswersCell + "<>\"\"; LOWER(MID(" + studentAnswersCell + ";" + i + ";1)); \"\")";
+            row.append(",").append(formula);
+        }
+
+        for (int i = 1; i <= T; i++) {
+            String studentAnswerChar = "LOWER(MID(" + studentAnswersCell + ";" + i + ";1))";
+            String correctAnswerChar = "MID(" + examAnswersCell + ";" + i + ";1)";
+            String formula = "=IF(OR(" + examAnswersCell + "=\"\";" + studentAnswersCell + "=\"\");\"\";IF(" + studentAnswerChar + "=\"x\";\"x\";IF(" + studentAnswerChar + "=" + correctAnswerChar + ";\"c\";\"w\")))";
+            row.append(",").append(formula);
+        }
+
+        int checkStartColNum = 7 + T; // Q1 starts after the T extracted-answer columns.
+        int checkEndColNum = 7 + 2 * T - 1;
+        String range = getColumnLetter(checkStartColNum) + rowIndex + ":" + getColumnLetter(checkEndColNum) + rowIndex;
+        row.append(",").append("=COUNTIF(" + range + ";\"c\")");
+        row.append(",").append("=COUNTIF(" + range + ";\"w\")");
+        row.append(",").append("=COUNTIF(" + range + ";\"x\")");
+        return row.toString();
+    }
+
+    private static String buildExamAnswersFormula(List<ExamData> examDataList, String examNumberCell) {
+        StringBuilder formula = new StringBuilder();
+        formula.append("=IFERROR(IF(").append(examNumberCell).append("<>\"\";SWITCH(VALUE(").append(examNumberCell).append(")");
+        for (ExamData ed : examDataList) {
+            formula.append(";").append(ed.examNumber).append(";\"").append(buildCorrectAnswersString(ed)).append("\"");
+        }
+        formula.append(";\"\");\"\");\"\")");
+        return formula.toString();
+    }
+
+    private static String buildCorrectAnswersString(ExamData examData) {
+        StringBuilder answers = new StringBuilder();
+        for (Integer correctIndex : examData.correctAnswerIndices) {
+            answers.append(correctIndex + 1);
+        }
+        return answers.toString();
     }
 
     /**
