@@ -11,8 +11,8 @@ function usage() {
 Converts legacy Inquisitor .qa files to .qa.md files.
 
 Examples:
-  node scripts/convert_qa_to_md.cjs Wallace_questions
-  node scripts/convert_qa_to_md.cjs --overwrite Lynch_questions/1_lynch_films.qa
+  node scripts/convert_qa_to_md.cjs example_questions/Wallace_questions
+  node scripts/convert_qa_to_md.cjs --overwrite example_questions/Lynch_questions/1_lynch_films.qa
 `);
 }
 

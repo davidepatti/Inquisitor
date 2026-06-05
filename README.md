@@ -116,5 +116,5 @@ java -cp build/electron-java/classes Inquisitor n1 file1.qa.md n2 file2.qa.md \
 The default local course/profile data includes:
 
 - `courses.properties`
-- `Wallace_questions/`
-- `Lynch_questions/`
+- `example_questions/Wallace_questions/`
+- `example_questions/Lynch_questions/`

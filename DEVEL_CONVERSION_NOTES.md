@@ -13,7 +13,7 @@ Main files:
 - `electron/preload.cjs`: secure bridge between the renderer and Electron main process.
 - `renderer/`: modern web interface for course/profile selection, question counts, generation options, logs, and output actions.
 - `courses.properties`: persisted course/profile data used by the Electron UI.
-- `questions/`, `Wallace_questions/`, `Lynch_questions/`: sample or working `.qa.md` question-bank folders.
+- `questions/`, `example_questions/Wallace_questions/`, `example_questions/Lynch_questions/`: sample or working `.qa.md` question-bank folders.
 - `scripts/convert_qa_to_md.cjs`: one-way converter from old `.qa` files to `.qa.md`.
 - `scripts/build_electron_java.sh`: compiles the Java CLI into `build/electron-java/classes`.
 - `scripts/inquisitor`: convenience launcher for `npm start`.
@@ -160,8 +160,8 @@ Compatibility concerns:
 
 Use these to validate the port:
 
-- `Wallace_questions/`
-- `Lynch_questions/`
+- `example_questions/Wallace_questions/`
+- `example_questions/Lynch_questions/`
 - `questions/`
 - Existing generated folders such as `IoT_Systems_and_Technologies_20250630/`, `IoT_Systems_and_Technologies_20260321/`, and course-specific generated folders.
 
