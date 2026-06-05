@@ -58,8 +58,8 @@ function setStatus(node, icon, text, mode) {
 
 function setBusy(isBusy) {
   state.generating = isBusy;
-  el.generateBtn.disabled = isBusy || selectedTotal() === 0;
   el.generateBtn.querySelector("span:last-child").textContent = isBusy ? "Generating" : "Generate";
+  updateGenerateState();
   el.refreshQaBtn.disabled = isBusy;
   el.browseFolderBtn.disabled = isBusy;
 }
@@ -136,7 +136,6 @@ async function selectCourse(index) {
   const course = state.profile.courses[state.currentCourseIndex];
 
   el.courseSelect.value = String(state.currentCourseIndex);
-  el.workspaceTitle.textContent = course.name || "Course";
   el.headingInput.value = course.heading || course.name || "Exam";
   el.subheadingInput.value = course.subheading || "";
   el.seedInput.value = String(state.app?.defaultSeed || "");
@@ -222,7 +221,21 @@ function selectedFiles() {
 function updateTotal() {
   const total = selectedTotal();
   el.totalQuestions.textContent = String(total);
+  updateGenerateState(total);
+}
+
+function updateGenerateState(total = selectedTotal()) {
   el.generateBtn.disabled = state.generating || total === 0;
+  if (state.generating) {
+    el.generateHelp.textContent = "Generation in progress.";
+    el.generateHelp.className = "generate-help working";
+  } else if (total === 0) {
+    el.generateHelp.textContent = "Select at least one question.";
+    el.generateHelp.className = "generate-help warning";
+  } else {
+    el.generateHelp.textContent = "Ready to generate.";
+    el.generateHelp.className = "generate-help ready";
+  }
 }
 
 function appendLog(line, level = "info") {
@@ -446,7 +459,6 @@ function bindElements() {
     "java-status-icon",
     "pdf-status",
     "pdf-status-icon",
-    "workspace-title",
     "add-course-btn",
     "remove-course-btn",
     "course-select",
@@ -462,6 +474,7 @@ function bindElements() {
     "total-questions",
     "compile-pdf-input",
     "generate-btn",
+    "generate-help",
     "output-summary",
     "open-pdf-btn",
     "open-tex-btn",

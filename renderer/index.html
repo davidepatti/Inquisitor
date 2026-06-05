@@ -47,28 +47,25 @@
 
       <main class="workspace">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Course workspace</p>
-            <h2 id="workspace-title">Inquisitor</h2>
+          <div class="course-picker">
+            <label for="course-select">Course</label>
+            <select id="course-select"></select>
           </div>
-          <div class="topbar-actions">
-            <button id="add-course-btn" class="icon-button" type="button" title="Add course">
-              <span data-icon="plus"></span>
+          <div class="topbar-actions" aria-label="Course actions">
+            <button id="refresh-qa-btn" class="button secondary" type="button">
+              <span data-icon="refresh"></span>
+              <span>Refresh</span>
             </button>
-            <button id="remove-course-btn" class="icon-button danger" type="button" title="Remove course">
+            <button id="add-course-btn" class="button secondary course-action" type="button" title="Add course">
+              <span data-icon="plus"></span>
+              <span class="course-action-label">Add</span>
+            </button>
+            <button id="remove-course-btn" class="button secondary danger course-action" type="button" title="Remove course">
               <span data-icon="trash"></span>
+              <span class="course-action-label">Remove</span>
             </button>
           </div>
         </header>
-
-        <section class="course-strip">
-          <label for="course-select">Course</label>
-          <select id="course-select"></select>
-          <button id="refresh-qa-btn" class="button secondary" type="button">
-            <span data-icon="refresh"></span>
-            <span>Refresh</span>
-          </button>
-        </section>
 
         <section class="setup-grid">
           <div class="panel parameters-panel">
@@ -85,36 +82,41 @@
                 <span>Subheading</span>
                 <input id="subheading-input" type="text" spellcheck="false">
               </label>
-              <label>
-                <span>Seed</span>
-                <input id="seed-input" type="number" min="0" step="1">
-              </label>
-              <label>
-                <span>Exam variants</span>
-                <input id="total-exams-input" type="number" min="1" step="1">
-              </label>
-              <label>
-                <span>Students</span>
-                <input id="total-students-input" type="number" min="1" step="1">
-              </label>
+              <div class="settings-group" role="group" aria-labelledby="generation-settings-title">
+                <h4 id="generation-settings-title">Generation settings</h4>
+                <div class="settings-grid">
+                  <label>
+                    <span>Seed</span>
+                    <input id="seed-input" type="number" min="0" step="1">
+                  </label>
+                  <label>
+                    <span>Exam variants</span>
+                    <input id="total-exams-input" type="number" min="1" step="1">
+                  </label>
+                  <label>
+                    <span>Students</span>
+                    <input id="total-students-input" type="number" min="1" step="1">
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="panel bank-panel">
-            <div class="panel-title bank-title">
-              <div>
-                <span data-icon="folder"></span>
-                <h3>Question Bank</h3>
-              </div>
+            <div class="panel-title">
+              <span data-icon="folder"></span>
+              <h3>Question Bank</h3>
+            </div>
+            <div class="folder-control">
+              <label class="folder-field" for="base-path-input">
+                <span>Folder</span>
+                <input id="base-path-input" type="text" spellcheck="false">
+              </label>
               <button id="browse-folder-btn" class="button secondary" type="button">
                 <span data-icon="folder-open"></span>
                 <span>Browse</span>
               </button>
             </div>
-            <label class="folder-field" for="base-path-input">
-              <span>Folder</span>
-              <input id="base-path-input" type="text" spellcheck="false">
-            </label>
             <div id="qa-list" class="qa-list" aria-live="polite"></div>
           </div>
         </section>
@@ -130,10 +132,13 @@
             <span></span>
             <strong>Compile PDF</strong>
           </label>
-          <button id="generate-btn" class="button primary" type="button" disabled>
-            <span data-icon="play"></span>
-            <span>Generate</span>
-          </button>
+          <div class="generate-action">
+            <button id="generate-btn" class="button primary" type="button" disabled>
+              <span data-icon="play"></span>
+              <span>Generate</span>
+            </button>
+            <div id="generate-help" class="generate-help" role="status" aria-live="polite">Select at least one question.</div>
+          </div>
         </section>
 
         <section class="output-grid">
