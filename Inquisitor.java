@@ -449,9 +449,12 @@ public class Inquisitor {
         for (Question q : questions) {
             StringBuilder questionTex = new StringBuilder();
 
-            // Keep only the question label bold, so multi-line prompts and display math render cleanly.
-            questionTex.append("\\textbf{Q" + questionNumber + ":} " + escapeLatex(q.text));
-            questionTex.append("\n\n");
+            // Scope bold styling to the question label and prompt; answers start after the group.
+            questionTex.append("{\\bfseries Q")
+                    .append(questionNumber)
+                    .append(": ")
+                    .append(escapeLatex(q.text))
+                    .append("\\par}\n\n");
 
             // Begin enumerate environment with numerical labels
             questionTex.append("\\begin{enumerate}[label=\\arabic*.]\n");
