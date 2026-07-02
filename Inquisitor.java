@@ -222,10 +222,12 @@ public class Inquisitor {
         // Initialize output filenames with the shared 8-hex exam ID prefix.
         String filePrefix = generateExamIdPrefix(commandLineString);
         String outputFileName = filePrefix + "_all_exams.tex";
+        String highlightedOutputFileName = filePrefix + "_all_exams_correct_answers.tex";
         String csvFileName = filePrefix + "_results.csv";
         String answersKeyFileName = filePrefix + "_answers_key.txt";
 
         Path outputFilePath = outputFolderPath.resolve(outputFileName);
+        Path highlightedOutputFilePath = outputFolderPath.resolve(highlightedOutputFileName);
         Path csvFilePath = outputFolderPath.resolve(csvFileName);
         Path answersKeyFilePath = outputFolderPath.resolve(answersKeyFileName);
 
@@ -264,38 +266,37 @@ public class Inquisitor {
         // Determine T (number of questions) based on the first exam
         int T = examDataList.get(0).correctAnswerIndices.size();
 
-        // Start writing the LaTeX file
+        try {
+            writeExamsLatex(outputFilePath, examDataList, commandLineString, heading, subheading, false);
+            System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
+
+            writeExamsLatex(highlightedOutputFilePath, examDataList, commandLineString, heading, subheading, true);
+            System.out.println("Generated " + highlightedOutputFilePath.getFileName() + " successfully.");
+
+            // Write results.csv with new columns
+            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents);
+            System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
+
+            // Write answers_key.txt
+            writeAnswersKey(examDataList, answersKeyFilePath.toString());
+            System.out.println("Generated " + answersKeyFileName + " successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error writing generator output.");
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeExamsLatex(
+            Path outputFilePath,
+            List<ExamData> examDataList,
+            String commandLineString,
+            String heading,
+            String subheading,
+            boolean highlightCorrectAnswers
+    ) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath.toString()))) {
-            // Write LaTeX preamble with optimized settings
-            writer.write("\\documentclass[10pt]{article}"); // Smaller base font size
-            writer.newLine();
-            writer.write("\\usepackage[utf8]{inputenc}");      // UTF-8 encoding
-            writer.newLine();
-            writer.write("\\usepackage[T1]{fontenc}");         // Enhanced font encoding
-            writer.newLine();
-            writer.write("\\usepackage{lmodern}");             // Latin Modern fonts
-            writer.newLine();
-            writer.write("\\usepackage{enumitem}");            // Customizable lists
-            writer.newLine();
-            writer.write("\\usepackage{multicol}");            // Two-column layout
-            writer.newLine();
-            writer.write("\\usepackage{geometry}");            // Page layout
-            writer.newLine();
-            writer.write("\\usepackage{setspace}");            // Line spacing control
-            writer.newLine();
-            writer.write("\\geometry{a4paper, margin=0.5in}"); // One-third less margin space than 0.75in
-            writer.newLine();
-            writer.write("\\setstretch{0.8}");                 // Reduced line spacing
-            writer.newLine();
-            writer.write("\\hyphenpenalty=10000");             // Prevent words from splitting across lines
-            writer.newLine();
-            writer.write("\\exhyphenpenalty=10000");           // Prevent breaks at explicit hyphens
-            writer.newLine();
-            writer.write("\\emergencystretch=2em");            // Allow cleaner spacing without hyphenation
-            writer.newLine();
-            writer.write("\\begin{document}");
-            writer.newLine();
-            writer.newLine();
+            writeLatexPreamble(writer);
 
             // Write each exam into the LaTeX file
             for (ExamData ed : examDataList) {
@@ -308,15 +309,12 @@ public class Inquisitor {
 
                 // Write heading for each exam, with obfuscated exam ID
                 String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
-                writer.write("\\section*{" + escapeLatex(heading) + " \\footnotesize [" + obfuscatedExamId+"]}");
-                //writer.write("{\\footnotesize " + obfuscatedExamId + "}");
-                //writer.newLine();
+                writer.write("\\section*{" + escapeLatex(heading) + " \\footnotesize [" + obfuscatedExamId + "]}");
                 writer.newLine();
 
                 // If subheading is provided, add it below the main heading
                 if (subheading != null) {
                     writer.write("{\\footnotesize " + escapeLatex(subheading) + "}");
-                    //writer.newLine();
                     writer.newLine();
                 }
 
@@ -325,13 +323,11 @@ public class Inquisitor {
                 writer.newLine();
 
                 // Generate LaTeX content for the current exam
-                List<String> latexQuestions = generateLatex(ed.questions);
+                List<String> latexQuestions = generateLatex(ed.questions, highlightCorrectAnswers);
 
                 // Write each question's LaTeX content
                 for (String questionTex : latexQuestions) {
                     writer.write(questionTex);
-                    //writer.newLine();
-           //         writer.newLine();
                 }
 
                 writer.write("\\end{multicols}");
@@ -341,21 +337,42 @@ public class Inquisitor {
 
             writer.write("\\end{document}");
             writer.newLine();
-
-            System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
-
-            // Write results.csv with new columns
-            writeResultsCSV(examDataList, csvFilePath.toString(), T, totalStudents);
-            System.out.println("Generated " + csvFilePath.getFileName() + " successfully.");
-
-            // Write answers_key.txt
-            writeAnswersKey(examDataList, answersKeyFilePath.toString());
-            System.out.println("Generated " + answersKeyFileName + " successfully.");
-
-        } catch (IOException e) {
-            System.out.println("Error writing to " + outputFilePath.getFileName());
-            e.printStackTrace();
         }
+    }
+
+    private static void writeLatexPreamble(BufferedWriter writer) throws IOException {
+        // Write LaTeX preamble with optimized settings
+        writer.write("\\documentclass[10pt]{article}"); // Smaller base font size
+        writer.newLine();
+        writer.write("\\usepackage[utf8]{inputenc}");      // UTF-8 encoding
+        writer.newLine();
+        writer.write("\\usepackage[T1]{fontenc}");         // Enhanced font encoding
+        writer.newLine();
+        writer.write("\\usepackage{lmodern}");             // Latin Modern fonts
+        writer.newLine();
+        writer.write("\\usepackage{enumitem}");            // Customizable lists
+        writer.newLine();
+        writer.write("\\usepackage{multicol}");            // Two-column layout
+        writer.newLine();
+        writer.write("\\usepackage{geometry}");            // Page layout
+        writer.newLine();
+        writer.write("\\usepackage{setspace}");            // Line spacing control
+        writer.newLine();
+        writer.write("\\usepackage{xcolor}");              // Correct-answer highlighting
+        writer.newLine();
+        writer.write("\\geometry{a4paper, margin=0.5in}"); // One-third less margin space than 0.75in
+        writer.newLine();
+        writer.write("\\setstretch{0.8}");                 // Reduced line spacing
+        writer.newLine();
+        writer.write("\\hyphenpenalty=10000");             // Prevent words from splitting across lines
+        writer.newLine();
+        writer.write("\\exhyphenpenalty=10000");           // Prevent breaks at explicit hyphens
+        writer.newLine();
+        writer.write("\\emergencystretch=2em");            // Allow cleaner spacing without hyphenation
+        writer.newLine();
+        writer.write("\\begin{document}");
+        writer.newLine();
+        writer.newLine();
     }
 
     /**
@@ -443,7 +460,7 @@ public class Inquisitor {
      * @param questions List of Question objects.
      * @return List of LaTeX-formatted question strings.
      */
-    private static List<String> generateLatex(List<Question> questions) {
+    private static List<String> generateLatex(List<Question> questions, boolean highlightCorrectAnswers) {
         List<String> latexQuestions = new ArrayList<>();
         int questionNumber = 1;
         for (Question q : questions) {
@@ -460,8 +477,17 @@ public class Inquisitor {
             questionTex.append("\\begin{enumerate}[label=\\arabic*.]\n");
 
             // Use the already shuffled answers
-            for (String answer : q.answers) {
-                questionTex.append("\\item " + escapeLatex(answer) + "\n");
+            for (int answerIndex = 0; answerIndex < q.answers.size(); answerIndex++) {
+                String answer = escapeLatex(q.answers.get(answerIndex));
+                if (highlightCorrectAnswers && answerIndex == q.correctAnswerIndex) {
+                    questionTex.append("\\item {\\color{green!50!black}\\bfseries ")
+                            .append(answer)
+                            .append("}\n");
+                } else {
+                    questionTex.append("\\item ")
+                            .append(answer)
+                            .append("\n");
+                }
             }
 
             questionTex.append("\\end{enumerate}\n");

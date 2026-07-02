@@ -533,9 +533,11 @@ function buildOutputPaths(config, generatorArgs = buildJavaArgs(config)) {
   return {
     outputDir,
     texPath: path.join(outputDir, `${filePrefix}_all_exams.tex`),
+    highlightedTexPath: path.join(outputDir, `${filePrefix}_all_exams_correct_answers.tex`),
     csvPath: path.join(outputDir, `${filePrefix}_results.csv`),
     answersPath: path.join(outputDir, `${filePrefix}_answers_key.txt`),
-    pdfPath: path.join(outputDir, `${filePrefix}_all_exams.pdf`)
+    pdfPath: path.join(outputDir, `${filePrefix}_all_exams.pdf`),
+    highlightedPdfPath: path.join(outputDir, `${filePrefix}_all_exams_correct_answers.pdf`)
   };
 }
 
@@ -543,9 +545,11 @@ function outputFileState(outputPaths) {
   return {
     outputDir: fs.existsSync(outputPaths.outputDir),
     tex: fs.existsSync(outputPaths.texPath),
+    highlightedTex: fs.existsSync(outputPaths.highlightedTexPath),
     csv: fs.existsSync(outputPaths.csvPath),
     answers: fs.existsSync(outputPaths.answersPath),
-    pdf: fs.existsSync(outputPaths.pdfPath)
+    pdf: fs.existsSync(outputPaths.pdfPath),
+    highlightedPdf: fs.existsSync(outputPaths.highlightedPdfPath)
   };
 }
 
@@ -618,6 +622,34 @@ function checkCommand(command, args = ["--version"]) {
   });
 }
 
+async function compilePdfFromTex(texPath, outputDir, sendLog, label) {
+  if (!fs.existsSync(texPath)) {
+    sendLog(`Skipping ${label} PDF: missing ${texPath}`, "warning");
+    return null;
+  }
+
+  sendLog(`Compiling ${label} PDF with pdflatex, pass 1.`);
+  let exitCode = await runProcess(
+    "pdflatex",
+    [path.basename(texPath)],
+    { cwd: outputDir },
+    sendLog
+  );
+  if (exitCode === 0) {
+    sendLog(`Compiling ${label} PDF with pdflatex, pass 2.`);
+    exitCode = await runProcess(
+      "pdflatex",
+      [path.basename(texPath)],
+      { cwd: outputDir },
+      sendLog
+    );
+  }
+  if (exitCode !== 0) {
+    sendLog(`pdflatex for ${label} PDF exited with code ${exitCode}.`, "error");
+  }
+  return exitCode;
+}
+
 async function runGeneration(event, config) {
   const runId = config.runId || String(Date.now());
   const sendLog = (line, level = "info") => {
@@ -641,39 +673,24 @@ async function runGeneration(event, config) {
   }
 
   let pdfExit = null;
+  let highlightedPdfExit = null;
   if (config.compilePdf) {
     const pdflatexAvailable = await checkCommand("pdflatex", ["--version"]);
     if (!pdflatexAvailable) {
       sendLog("pdflatex was not found. LaTeX, CSV, and answer key were still generated.", "warning");
-    } else if (!fs.existsSync(outputPaths.texPath)) {
-      sendLog(`Skipping PDF: missing ${outputPaths.texPath}`, "warning");
     } else {
-      sendLog("Compiling PDF with pdflatex, pass 1.");
-      pdfExit = await runProcess(
-        "pdflatex",
-        [path.basename(outputPaths.texPath)],
-        { cwd: outputPaths.outputDir },
-        sendLog
-      );
-      if (pdfExit === 0) {
-        sendLog("Compiling PDF with pdflatex, pass 2.");
-        pdfExit = await runProcess(
-          "pdflatex",
-          [path.basename(outputPaths.texPath)],
-          { cwd: outputPaths.outputDir },
-          sendLog
-        );
-      }
-      if (pdfExit !== 0) {
-        sendLog(`pdflatex exited with code ${pdfExit}.`, "error");
-      }
+      pdfExit = await compilePdfFromTex(outputPaths.texPath, outputPaths.outputDir, sendLog, "exam");
+      highlightedPdfExit = await compilePdfFromTex(outputPaths.highlightedTexPath, outputPaths.outputDir, sendLog, "answer-highlighted");
     }
   }
 
   return {
-    ok: javaExit === 0 && (pdfExit == null || pdfExit === 0),
+    ok: javaExit === 0
+      && (pdfExit == null || pdfExit === 0)
+      && (highlightedPdfExit == null || highlightedPdfExit === 0),
     javaExit,
     pdfExit,
+    highlightedPdfExit,
     outputPaths,
     files: outputFileState(outputPaths),
     runId

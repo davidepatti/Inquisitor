@@ -381,6 +381,7 @@ function setOutput(result) {
     : "No generation yet.";
 
   el.openPdfBtn.disabled = !paths?.pdfPath || !files.pdf;
+  el.openHighlightedPdfBtn.disabled = !paths?.highlightedPdfPath || !files.highlightedPdf;
   el.openTexBtn.disabled = !paths?.texPath || !files.tex;
   el.openCsvBtn.disabled = !paths?.csvPath || !files.csv;
   el.openFolderBtn.disabled = !paths?.outputDir || !files.outputDir;
@@ -552,6 +553,8 @@ async function openOutput(kind) {
     await api.openPath(paths.outputDir);
   } else if (kind === "pdf") {
     await api.openPath(paths.pdfPath);
+  } else if (kind === "highlighted-pdf") {
+    await api.openPath(paths.highlightedPdfPath);
   } else if (kind === "tex") {
     await api.openPath(paths.texPath);
   } else if (kind === "csv") {
@@ -599,6 +602,7 @@ function bindElements() {
     "generate-help",
     "output-summary",
     "open-pdf-btn",
+    "open-highlighted-pdf-btn",
     "open-tex-btn",
     "open-csv-btn",
     "open-folder-btn",
@@ -646,6 +650,7 @@ function bindEvents() {
   });
 
   el.openPdfBtn.addEventListener("click", () => openOutput("pdf"));
+  el.openHighlightedPdfBtn.addEventListener("click", () => openOutput("highlighted-pdf"));
   el.openTexBtn.addEventListener("click", () => openOutput("tex"));
   el.openCsvBtn.addEventListener("click", () => openOutput("csv"));
   el.openFolderBtn.addEventListener("click", () => openOutput("folder"));
