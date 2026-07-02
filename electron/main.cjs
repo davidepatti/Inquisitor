@@ -330,6 +330,23 @@ function resolveProfilePath(rawPath, profileDir) {
   return path.resolve(profileDir, candidate);
 }
 
+function formatProfilePath(rawPath, profileDir) {
+  if (!rawPath) {
+    return "";
+  }
+
+  const normalizedPath = path.resolve(rawPath);
+  if (!profileDir) {
+    return normalizedPath;
+  }
+
+  const relativePath = path.relative(profileDir, normalizedPath);
+  if (relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+    return relativePath;
+  }
+  return normalizedPath;
+}
+
 function parseCounts(raw) {
   const counts = {};
   if (!raw || !raw.trim()) {
@@ -439,6 +456,7 @@ async function loadProfileFile(filePath) {
 
 async function saveProfileFile(profile, filePath) {
   const normalizedPath = path.resolve(filePath);
+  const profileDir = path.dirname(normalizedPath);
   const profileSeed = profileSeedValue(profile);
   const lines = [
     "# Inquisitor Electron profile",
@@ -453,7 +471,7 @@ async function saveProfileFile(profile, filePath) {
     const id = index + 1;
     const prefix = `course.${id}.`;
     lines.push(`${prefix}name=${escapeProperty(course.name)}`);
-    lines.push(`${prefix}path=${escapeProperty(course.basePath)}`);
+    lines.push(`${prefix}path=${escapeProperty(formatProfilePath(course.basePath, profileDir))}`);
     lines.push(`${prefix}heading=${escapeProperty(course.heading || defaultHeadingForCourse(course.name))}`);
     lines.push(`${prefix}subheading=${escapeProperty(course.subheading || "")}`);
     lines.push(`${prefix}seed=${courseSeedValue(course, profileSeed)}`);
