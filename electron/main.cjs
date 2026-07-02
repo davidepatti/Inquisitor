@@ -11,8 +11,12 @@ const javaClassesDir = path.join(projectRoot, "build", "electron-java", "classes
 const defaultProfilePath = path.join(projectRoot, "courses.properties");
 
 let mainWindow = null;
+let allowWindowClose = false;
+let closePromptOpen = false;
 
 function createWindow() {
+  allowWindowClose = false;
+  closePromptOpen = false;
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -30,7 +34,131 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.on("close", handleWindowClose);
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
   mainWindow.loadFile(rendererEntry);
+}
+
+async function handleWindowClose(event) {
+  if (allowWindowClose) {
+    return;
+  }
+
+  event.preventDefault();
+  if (closePromptOpen) {
+    return;
+  }
+
+  closePromptOpen = true;
+  const windowToClose = mainWindow;
+
+  try {
+    const closeState = await getProfileCloseState(windowToClose);
+    if (!closeState?.dirty) {
+      closeWindowWithoutPrompt(windowToClose);
+      return;
+    }
+
+    const resolution = await resolveUnsavedProfileChanges(closeState.profile, "closing");
+    if (resolution.action === "cancel") {
+      return;
+    }
+
+    closeWindowWithoutPrompt(windowToClose);
+  } catch (error) {
+    await dialog.showMessageBox(windowToClose, {
+      type: "error",
+      buttons: ["OK"],
+      message: "Unable to close Inquisitor",
+      detail: error.message || String(error)
+    });
+  } finally {
+    closePromptOpen = false;
+  }
+}
+
+async function getProfileCloseState(targetWindow) {
+  if (!targetWindow || targetWindow.isDestroyed() || targetWindow.webContents.isDestroyed()) {
+    return { dirty: false, profile: null };
+  }
+
+  return targetWindow.webContents.executeJavaScript(
+    "window.inquisitorGetProfileCloseState ? window.inquisitorGetProfileCloseState() : { dirty: false, profile: null }",
+    true
+  );
+}
+
+async function resolveUnsavedProfileChanges(profile, actionDescription) {
+  const choice = await dialog.showMessageBox(mainWindow, {
+    type: "question",
+    buttons: ["Save", "Don't Save", "Cancel"],
+    defaultId: 0,
+    cancelId: 2,
+    noLink: true,
+    message: `Save changes to "${profile?.name || "Inquisitor"}" before ${actionDescription}?`,
+    detail: "Unsaved changes to the current profile will be lost if you don't save them."
+  });
+
+  if (choice.response === 2) {
+    return { action: "cancel", profile: null };
+  }
+
+  if (choice.response === 1) {
+    return { action: "discard", profile: null };
+  }
+
+  try {
+    const saved = await saveProfileToCurrentPath(profile);
+    return saved ? { action: "saved", profile: saved } : { action: "cancel", profile: null };
+  } catch (error) {
+    await dialog.showMessageBox(mainWindow, {
+      type: "error",
+      buttons: ["OK"],
+      message: "Unable to save profile",
+      detail: error.message || String(error)
+    });
+    return { action: "cancel", profile: null };
+  }
+}
+
+async function saveProfileToCurrentPath(profile) {
+  const defaultPath = profile?.path || path.join(projectRoot, "courses.properties");
+  if (!profile?.path) {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Save profile",
+      defaultPath,
+      filters: [{ name: "Inquisitor profiles", extensions: ["properties"] }]
+    });
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+    return saveProfileFile(profile, result.filePath);
+  }
+
+  return saveProfileFile(profile, profile.path);
+}
+
+async function chooseProfilePath() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Load profile",
+    defaultPath: projectRoot,
+    properties: ["openFile"],
+    filters: [{ name: "Inquisitor profiles", extensions: ["properties"] }]
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+}
+
+function closeWindowWithoutPrompt(targetWindow) {
+  if (!targetWindow || targetWindow.isDestroyed()) {
+    return;
+  }
+  allowWindowClose = true;
+  targetWindow.close();
 }
 
 function defaultSeedForToday() {
@@ -166,6 +294,20 @@ function parseInteger(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function nonNegativeInteger(value, fallback) {
+  return Math.max(0, parseInteger(value, fallback));
+}
+
+function profileSeedValue(profile) {
+  const selectedIndex = Number(profile?.selectedCourseIndex || 0);
+  const selectedCourse = profile?.courses?.[selectedIndex];
+  return nonNegativeInteger(profile?.seed, nonNegativeInteger(selectedCourse?.seed, defaultSeedForToday()));
+}
+
+function courseSeedValue(course, fallbackSeed) {
+  return nonNegativeInteger(course?.seed, fallbackSeed);
+}
+
 function parseBoolean(value, fallback = true) {
   if (value == null || value === "") {
     return fallback;
@@ -225,9 +367,11 @@ async function loadProfileFile(filePath) {
   const text = await fsp.readFile(normalizedPath, "utf8");
   const props = parseProperties(text);
   const profileDir = path.dirname(normalizedPath);
+  const profileSeed = nonNegativeInteger(props["profile.seed"], defaultSeedForToday());
   const profile = {
     name: props["profile.name"] || profileNameFromPath(normalizedPath),
     path: normalizedPath,
+    seed: profileSeed,
     compilePdf: parseBoolean(props["profile.compilePdf"], true),
     selectedCourseIndex: parseInteger(props["profile.selectedCourse"], 0),
     courses: []
@@ -263,6 +407,7 @@ async function loadProfileFile(filePath) {
       name,
       heading: heading && heading.trim() ? heading : defaultHeadingForCourse(name),
       subheading: subheading || "",
+      seed: nonNegativeInteger(props[`${prefix}seed`], profileSeed),
       basePath: resolveProfilePath(storedPath, profileDir),
       totalExams: parseInteger(props[`${prefix}totalExams`], legacyTotalExams),
       totalStudents: parseInteger(props[`${prefix}totalStudents`], legacyTotalStudents),
@@ -276,6 +421,7 @@ async function loadProfileFile(filePath) {
       name: "Default",
       heading: "Exam",
       subheading: "",
+      seed: profileSeed,
       basePath: path.join(projectRoot, "questions"),
       totalExams: 8,
       totalStudents: 120,
@@ -293,9 +439,11 @@ async function loadProfileFile(filePath) {
 
 async function saveProfileFile(profile, filePath) {
   const normalizedPath = path.resolve(filePath);
+  const profileSeed = profileSeedValue(profile);
   const lines = [
     "# Inquisitor Electron profile",
     `profile.name=${escapeProperty(profile.name || profileNameFromPath(normalizedPath))}`,
+    `profile.seed=${profileSeed}`,
     `profile.compilePdf=${profile.compilePdf === false ? "false" : "true"}`,
     `profile.selectedCourse=${Number(profile.selectedCourseIndex || 0)}`,
     `courses=${profile.courses.map((_, index) => index + 1).join(",")}`
@@ -308,6 +456,7 @@ async function saveProfileFile(profile, filePath) {
     lines.push(`${prefix}path=${escapeProperty(course.basePath)}`);
     lines.push(`${prefix}heading=${escapeProperty(course.heading || defaultHeadingForCourse(course.name))}`);
     lines.push(`${prefix}subheading=${escapeProperty(course.subheading || "")}`);
+    lines.push(`${prefix}seed=${courseSeedValue(course, profileSeed)}`);
     lines.push(`${prefix}totalExams=${Number(course.totalExams || 8)}`);
     lines.push(`${prefix}totalStudents=${Number(course.totalStudents || 120)}`);
     lines.push(`${prefix}counts=${escapeProperty(formatCounts(course.questionCounts))}`);
@@ -359,7 +508,7 @@ function generateExamIdPrefix(commandLineArgs) {
 }
 
 function buildOutputPaths(config, generatorArgs = buildJavaArgs(config)) {
-  const seed = Number(config.seed || defaultSeedForToday());
+  const seed = nonNegativeInteger(config.seed, defaultSeedForToday());
   const heading = config.heading && config.heading.trim() ? config.heading.trim() : "Exam";
   const outputDir = path.resolve(config.basePath, `${sanitizeHeading(heading)}_${seed}`);
   const filePrefix = generateExamIdPrefix(generatorArgs.join(" "));
@@ -392,7 +541,7 @@ function buildJavaArgs(config) {
   }
   args.push("-t", String(Number(config.totalExams || 1)));
   args.push("-st", String(Number(config.totalStudents || 1)));
-  args.push("-s", String(Number(config.seed || defaultSeedForToday())));
+  args.push("-s", String(nonNegativeInteger(config.seed, defaultSeedForToday())));
   args.push("-h", config.heading && config.heading.trim() ? config.heading.trim() : "Exam");
   if (config.subheading && config.subheading.trim()) {
     args.push("-h2", config.subheading.trim());
@@ -524,18 +673,17 @@ function registerIpc() {
 
   ipcMain.handle("profile:loadDefault", async () => loadProfileFile(defaultProfilePath));
 
+  ipcMain.handle("profile:choosePath", async () => chooseProfilePath());
+  ipcMain.handle("profile:loadPath", async (_event, filePath) => loadProfileFile(filePath));
+
   ipcMain.handle("profile:chooseAndLoad", async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: "Load profile",
-      defaultPath: projectRoot,
-      properties: ["openFile"],
-      filters: [{ name: "Inquisitor profiles", extensions: ["properties"] }]
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-    return loadProfileFile(result.filePaths[0]);
+    const filePath = await chooseProfilePath();
+    return filePath ? loadProfileFile(filePath) : null;
   });
+
+  ipcMain.handle("profile:resolveUnsavedChanges", async (_event, profile, actionDescription) => (
+    resolveUnsavedProfileChanges(profile, actionDescription || "continuing")
+  ));
 
   ipcMain.handle("profile:save", async (_event, profile) => {
     const result = await dialog.showSaveDialog(mainWindow, {

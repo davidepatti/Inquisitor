@@ -26,8 +26,11 @@ const state = {
   profile: null,
   currentCourseIndex: 0,
   qaFiles: [],
+  qaFilesLoaded: false,
+  qaFilesBasePath: "",
   lastResult: null,
-  generating: false
+  generating: false,
+  cleanProfileSnapshot: ""
 };
 
 const el = {};
@@ -39,6 +42,19 @@ function byId(id) {
 function numberValue(input, fallback) {
   const value = Number.parseInt(input.value, 10);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function nonNegativeValue(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+}
+
+function profileSeedFallback(profile = state.profile) {
+  return nonNegativeValue(profile?.seed, state.app?.defaultSeed || 0);
+}
+
+function courseSeedValue(course, profile = state.profile) {
+  return nonNegativeValue(course?.seed, profileSeedFallback(profile));
 }
 
 function iconSvg(name) {
@@ -90,18 +106,109 @@ function captureCurrentCourse() {
   const course = state.profile.courses[state.currentCourseIndex];
   course.heading = el.headingInput.value.trim() || course.name || "Exam";
   course.subheading = el.subheadingInput.value.trim();
+  course.seed = Math.max(0, numberValue(el.seedInput, courseSeedValue(course)));
   course.basePath = el.basePathInput.value.trim();
   course.totalExams = Math.max(1, numberValue(el.totalExamsInput, 1));
   course.totalStudents = Math.max(1, numberValue(el.totalStudentsInput, 1));
-  course.questionCounts = {};
+  state.profile.seed = course.seed;
 
-  el.qaList.querySelectorAll("[data-file-name]").forEach((row) => {
+  if (!state.qaFilesLoaded || state.qaFilesBasePath !== course.basePath) {
+    return;
+  }
+
+  course.questionCounts = {};
+  Array.from(el.qaList.querySelectorAll("[data-file-name]")).forEach((row) => {
     const input = row.querySelector("input");
     const value = Math.max(0, numberValue(input, 0));
     if (value > 0) {
       course.questionCounts[row.dataset.fileName] = value;
     }
   });
+}
+
+function normalizeQuestionCounts(counts) {
+  return Object.fromEntries(
+    Object.entries(counts || {})
+      .filter(([, value]) => Number(value) > 0)
+      .sort(([left], [right]) => left.localeCompare(right, undefined, { numeric: true }))
+      .map(([fileName, value]) => [fileName, Number(value)])
+  );
+}
+
+function editableProfile() {
+  if (!state.profile) {
+    return null;
+  }
+
+  captureCurrentCourse();
+  state.profile.name = el.profileName.value.trim() || "Inquisitor";
+  state.profile.seed = Math.max(0, numberValue(el.seedInput, nonNegativeValue(state.profile.seed, state.app?.defaultSeed || 0)));
+  state.profile.compilePdf = el.compilePdfInput.checked;
+  state.profile.selectedCourseIndex = state.currentCourseIndex;
+  return state.profile;
+}
+
+function profileSnapshot(profile) {
+  if (!profile) {
+    return "";
+  }
+
+  return JSON.stringify({
+    name: profile.name || "Inquisitor",
+    seed: nonNegativeValue(profile.seed, state.app?.defaultSeed || 0),
+    compilePdf: profile.compilePdf !== false,
+    selectedCourseIndex: Number(profile.selectedCourseIndex || 0),
+    courses: (profile.courses || []).map((course) => ({
+      name: course.name || "",
+      heading: course.heading || course.name || "Exam",
+      subheading: course.subheading || "",
+      seed: courseSeedValue(course, profile),
+      basePath: course.basePath || "",
+      totalExams: Math.max(1, Number(course.totalExams || 8)),
+      totalStudents: Math.max(1, Number(course.totalStudents || 120)),
+      questionCounts: normalizeQuestionCounts(course.questionCounts)
+    }))
+  });
+}
+
+function markProfileClean() {
+  state.cleanProfileSnapshot = profileSnapshot(editableProfile());
+}
+
+function hasUnsavedProfileChanges() {
+  return profileSnapshot(editableProfile()) !== state.cleanProfileSnapshot;
+}
+
+function installCloseStateProvider() {
+  window.inquisitorGetProfileCloseState = () => {
+    const profile = editableProfile();
+    return {
+      dirty: hasUnsavedProfileChanges(),
+      profile
+    };
+  };
+}
+
+async function confirmLeaveCurrentProfile(actionDescription) {
+  if (!hasUnsavedProfileChanges()) {
+    return true;
+  }
+
+  const resolution = await api.resolveUnsavedProfileChanges(editableProfile(), actionDescription);
+  if (!resolution || resolution.action === "cancel") {
+    return false;
+  }
+
+  if (resolution.action === "saved" && resolution.profile) {
+    state.profile = resolution.profile;
+    state.currentCourseIndex = resolution.profile.selectedCourseIndex || 0;
+    renderProfile();
+    await selectCourse(state.currentCourseIndex);
+    markProfileClean();
+    appendLog(`Saved profile: ${resolution.profile.path}`);
+  }
+
+  return true;
 }
 
 function renderProfile() {
@@ -138,7 +245,7 @@ async function selectCourse(index) {
   el.courseSelect.value = String(state.currentCourseIndex);
   el.headingInput.value = course.heading || course.name || "Exam";
   el.subheadingInput.value = course.subheading || "";
-  el.seedInput.value = String(state.app?.defaultSeed || "");
+  el.seedInput.value = String(courseSeedValue(course));
   el.totalExamsInput.value = String(course.totalExams || 8);
   el.totalStudentsInput.value = String(course.totalStudents || 120);
   el.basePathInput.value = course.basePath || "";
@@ -147,11 +254,15 @@ async function selectCourse(index) {
 
 async function refreshQaFiles() {
   const basePath = el.basePathInput.value.trim();
+  state.qaFilesLoaded = false;
+  state.qaFilesBasePath = "";
   el.qaList.innerHTML = '<div class="empty-state">Reading question bank...</div>';
   updateTotal();
 
   if (!basePath) {
     state.qaFiles = [];
+    state.qaFilesLoaded = true;
+    state.qaFilesBasePath = "";
     el.qaList.innerHTML = '<div class="empty-state">No folder selected.</div>';
     return;
   }
@@ -159,10 +270,14 @@ async function refreshQaFiles() {
   try {
     const result = await api.listQaFiles(basePath);
     state.qaFiles = result.files;
+    state.qaFilesLoaded = true;
+    state.qaFilesBasePath = result.basePath;
     el.basePathInput.value = result.basePath;
     renderQaFiles();
   } catch (error) {
     state.qaFiles = [];
+    state.qaFilesLoaded = false;
+    state.qaFilesBasePath = "";
     el.qaList.innerHTML = `<div class="empty-state">${escapeHtml(error.message || "Unable to read folder.")}</div>`;
   }
 }
@@ -286,7 +401,7 @@ async function runGeneration() {
     basePath: el.basePathInput.value.trim(),
     heading: el.headingInput.value.trim() || course.name || "Exam",
     subheading: el.subheadingInput.value.trim(),
-    seed: Math.max(0, numberValue(el.seedInput, state.app.defaultSeed)),
+    seed: Math.max(0, numberValue(el.seedInput, courseSeedValue(course))),
     totalExams: Math.max(1, numberValue(el.totalExamsInput, 1)),
     totalStudents: Math.max(1, numberValue(el.totalStudentsInput, 1)),
     compilePdf: el.compilePdfInput.checked,
@@ -314,26 +429,30 @@ async function loadDefaultProfile() {
   state.currentCourseIndex = state.profile.selectedCourseIndex || 0;
   renderProfile();
   await selectCourse(state.currentCourseIndex);
+  markProfileClean();
 }
 
 async function chooseAndLoadProfile() {
-  captureCurrentCourse();
-  const loaded = await api.chooseAndLoadProfile();
-  if (!loaded) {
+  const profilePath = await api.chooseProfilePath();
+  if (!profilePath) {
     return;
   }
+
+  const canLeave = await confirmLeaveCurrentProfile("loading another profile");
+  if (!canLeave) {
+    return;
+  }
+
+  const loaded = await api.loadProfilePath(profilePath);
   state.profile = loaded;
   state.currentCourseIndex = loaded.selectedCourseIndex || 0;
   renderProfile();
   await selectCourse(state.currentCourseIndex);
+  markProfileClean();
 }
 
 async function saveProfile() {
-  captureCurrentCourse();
-  state.profile.name = el.profileName.value.trim() || "Inquisitor";
-  state.profile.compilePdf = el.compilePdfInput.checked;
-  state.profile.selectedCourseIndex = state.currentCourseIndex;
-  const saved = await api.saveProfile(state.profile);
+  const saved = await api.saveProfile(editableProfile());
   if (!saved) {
     return;
   }
@@ -341,6 +460,7 @@ async function saveProfile() {
   state.currentCourseIndex = saved.selectedCourseIndex || 0;
   renderProfile();
   await selectCourse(state.currentCourseIndex);
+  markProfileClean();
   appendLog(`Saved profile: ${saved.path}`);
 }
 
@@ -374,6 +494,7 @@ async function addCourse() {
     name,
     heading: name,
     subheading: "",
+    seed: Math.max(0, numberValue(el.seedInput, profileSeedFallback())),
     basePath: selectedPath,
     totalExams: Math.max(1, numberValue(el.totalExamsInput, 8)),
     totalStudents: Math.max(1, numberValue(el.totalStudentsInput, 120)),
@@ -400,6 +521,7 @@ async function removeCourse() {
       name: "Default",
       heading: "Exam",
       subheading: "",
+      seed: profileSeedFallback(),
       basePath: "",
       totalExams: 8,
       totalStudents: 120,
@@ -532,6 +654,7 @@ function bindEvents() {
 async function init() {
   bindElements();
   installIcons();
+  installCloseStateProvider();
   bindEvents();
 
   state.app = await api.getAppState();
