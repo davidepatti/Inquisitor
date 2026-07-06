@@ -67,35 +67,12 @@ function installIcons(root = document) {
   });
 }
 
-function setStatus(node, icon, text, mode) {
-  node.textContent = text;
-  icon.className = `status-dot ${mode}`;
-}
-
 function setBusy(isBusy) {
   state.generating = isBusy;
   el.generateBtn.querySelector("span:last-child").textContent = isBusy ? "Generating" : "Generate";
   updateGenerateState();
   el.refreshQaBtn.disabled = isBusy;
   el.browseFolderBtn.disabled = isBusy;
-}
-
-function updateSystemStatus() {
-  if (!state.app) {
-    return;
-  }
-  setStatus(
-    el.javaStatus,
-    el.javaStatusIcon,
-    state.app.javaReady ? "Java CLI ready" : "Java CLI missing",
-    state.app.javaReady ? "" : "error"
-  );
-  setStatus(
-    el.pdfStatus,
-    el.pdfStatusIcon,
-    state.app.pdflatexAvailable ? "pdflatex ready" : "pdflatex optional",
-    state.app.pdflatexAvailable ? "" : "warning"
-  );
 }
 
 function captureCurrentCourse() {
@@ -465,6 +442,122 @@ async function saveProfile() {
   appendLog(`Saved profile: ${saved.path}`);
 }
 
+function comparablePath(value) {
+  return String(value || "").replace(/\\/g, "/").replace(/\/+$/g, "");
+}
+
+function selectionCounts(selections) {
+  const counts = {};
+  (selections || []).forEach((selection) => {
+    const fileName = String(selection.fileName || "").trim();
+    const count = Math.max(0, Number(selection.count || 0));
+    if (fileName && count > 0) {
+      counts[fileName] = count;
+    }
+  });
+  return counts;
+}
+
+function findCourseIndexForExam(config) {
+  const targetBasePath = comparablePath(config.basePath);
+  const targetHeading = String(config.heading || "").trim();
+  let basePathMatch = -1;
+
+  for (let index = 0; index < state.profile.courses.length; index += 1) {
+    const course = state.profile.courses[index];
+    if (comparablePath(course.basePath) !== targetBasePath) {
+      continue;
+    }
+    if (basePathMatch < 0) {
+      basePathMatch = index;
+    }
+    if (
+      String(course.heading || "").trim() === targetHeading
+      || String(course.name || "").trim() === targetHeading
+    ) {
+      return index;
+    }
+  }
+
+  return basePathMatch;
+}
+
+async function applyExamInstance(loadResult) {
+  const instance = loadResult?.instance || loadResult;
+  const config = instance?.config;
+  if (!config) {
+    throw new Error("The selected file is not an Inquisitor exam instance.");
+  }
+
+  const basePath = config.basePath || loadResult?.outputDir || "";
+  const courseName = config.courseName || config.heading || "Exam instance";
+  const loadedCourse = {
+    id: `exam-${Date.now()}`,
+    name: courseName,
+    heading: config.heading || courseName,
+    subheading: config.subheading || "",
+    seed: nonNegativeValue(config.seed, profileSeedFallback()),
+    basePath,
+    totalExams: Math.max(1, Number(config.totalExams || 1)),
+    totalStudents: Math.max(1, Number(config.totalStudents || 1)),
+    questionCounts: selectionCounts(config.selections)
+  };
+
+  let index = findCourseIndexForExam({ ...config, basePath });
+  if (index < 0) {
+    state.profile.courses.push(loadedCourse);
+    index = state.profile.courses.length - 1;
+  } else {
+    const existingCourse = state.profile.courses[index];
+    state.profile.courses[index] = {
+      ...existingCourse,
+      ...loadedCourse,
+      id: existingCourse.id,
+      name: existingCourse.name || loadedCourse.name
+    };
+  }
+
+  state.profile.compilePdf = config.compilePdf !== false;
+  state.profile.seed = loadedCourse.seed;
+  state.currentCourseIndex = index;
+  state.profile.selectedCourseIndex = index;
+
+  renderProfile();
+  await selectCourse(index);
+  markProfileClean();
+
+  if (loadResult?.outputPaths) {
+    setOutput({
+      ok: true,
+      outputPaths: loadResult.outputPaths,
+      files: loadResult.files || {},
+      runId: `loaded-${Date.now()}`
+    });
+  }
+
+  appendLog(`Loaded exam instance: ${loadResult?.path || instance.examId || "exam-instance.json"}`);
+  appendLog("The generated questions are preserved in the exam package even if the question bank has changed.");
+}
+
+async function chooseAndLoadExam() {
+  const loadResult = await api.chooseAndLoadExam();
+  if (!loadResult) {
+    return;
+  }
+
+  const canLeave = await confirmLeaveCurrentProfile("loading an exam instance");
+  if (!canLeave) {
+    return;
+  }
+
+  try {
+    clearLog();
+    await applyExamInstance(loadResult);
+  } catch (error) {
+    appendLog(error.message || "Unable to load exam instance.", "error");
+  }
+}
+
 function showCourseDialog(defaultName = "") {
   return new Promise((resolve) => {
     el.courseDialogName.value = defaultName;
@@ -580,10 +673,7 @@ function bindElements() {
     "profile-path",
     "load-profile-btn",
     "save-profile-btn",
-    "java-status",
-    "java-status-icon",
-    "pdf-status",
-    "pdf-status-icon",
+    "load-exam-btn",
     "add-course-btn",
     "remove-course-btn",
     "course-select",
@@ -624,6 +714,7 @@ function bindEvents() {
   });
   el.loadProfileBtn.addEventListener("click", chooseAndLoadProfile);
   el.saveProfileBtn.addEventListener("click", saveProfile);
+  el.loadExamBtn.addEventListener("click", chooseAndLoadExam);
   el.addCourseBtn.addEventListener("click", addCourse);
   el.removeCourseBtn.addEventListener("click", removeCourse);
   el.browseFolderBtn.addEventListener("click", browseFolder);
@@ -663,7 +754,6 @@ async function init() {
   bindEvents();
 
   state.app = await api.getAppState();
-  updateSystemStatus();
   await loadDefaultProfile();
   appendLog("Ready.");
 }

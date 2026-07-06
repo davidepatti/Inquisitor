@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
+      <header class="app-header">
         <div class="brand">
           <div class="brand-mark" data-icon="scan"></div>
           <div>
@@ -17,55 +17,49 @@
           </div>
         </div>
 
-        <div class="sidebar-block">
+        <div class="header-field profile-field">
           <label for="profile-name">Profile</label>
           <input id="profile-name" type="text" spellcheck="false">
-          <div id="profile-path" class="small-path"></div>
-          <div class="button-row">
-            <button id="load-profile-btn" class="button secondary" type="button">
-              <span data-icon="upload"></span>
-              <span>Load</span>
-            </button>
-            <button id="save-profile-btn" class="button secondary" type="button">
-              <span data-icon="save"></span>
-              <span>Save</span>
-            </button>
-          </div>
         </div>
 
-        <div class="sidebar-block status-block">
-          <div class="status-line">
-            <span id="java-status-icon" class="status-dot muted"></span>
-            <span id="java-status">Java CLI</span>
-          </div>
-          <div class="status-line">
-            <span id="pdf-status-icon" class="status-dot muted"></span>
-            <span id="pdf-status">pdflatex</span>
-          </div>
+        <div class="header-field profile-path-field">
+          <label>Profile file</label>
+          <div id="profile-path" class="small-path"></div>
         </div>
-      </aside>
+
+        <div class="header-actions">
+          <button id="load-profile-btn" class="button secondary" type="button">
+            <span data-icon="upload"></span>
+            <span>Load</span>
+          </button>
+          <button id="save-profile-btn" class="button secondary" type="button">
+            <span data-icon="save"></span>
+            <span>Save</span>
+          </button>
+          <button id="load-exam-btn" class="button secondary" type="button">
+            <span data-icon="files"></span>
+            <span>Load Exam</span>
+          </button>
+        </div>
+
+        <div class="header-field course-picker">
+          <label for="course-select">Course</label>
+          <select id="course-select"></select>
+        </div>
+
+        <div class="header-actions course-controls" aria-label="Course actions">
+          <button id="add-course-btn" class="button secondary course-action" type="button" title="Add course">
+            <span data-icon="plus"></span>
+            <span class="course-action-label">Add</span>
+          </button>
+          <button id="remove-course-btn" class="button secondary danger course-action" type="button" title="Remove course">
+            <span data-icon="trash"></span>
+            <span class="course-action-label">Remove</span>
+          </button>
+        </div>
+      </header>
 
       <main class="workspace">
-        <header class="topbar">
-          <div class="course-picker">
-            <label for="course-select">Course</label>
-            <select id="course-select"></select>
-          </div>
-          <div class="topbar-actions" aria-label="Course actions">
-            <button id="refresh-qa-btn" class="button secondary" type="button">
-              <span data-icon="refresh"></span>
-              <span>Refresh</span>
-            </button>
-            <button id="add-course-btn" class="button secondary course-action" type="button" title="Add course">
-              <span data-icon="plus"></span>
-              <span class="course-action-label">Add</span>
-            </button>
-            <button id="remove-course-btn" class="button secondary danger course-action" type="button" title="Remove course">
-              <span data-icon="trash"></span>
-              <span class="course-action-label">Remove</span>
-            </button>
-          </div>
-        </header>
 
         <section class="setup-grid">
           <div class="panel parameters-panel">
@@ -115,6 +109,10 @@
               <button id="browse-folder-btn" class="button secondary" type="button">
                 <span data-icon="folder-open"></span>
                 <span>Browse</span>
+              </button>
+              <button id="refresh-qa-btn" class="button secondary" type="button">
+                <span data-icon="refresh"></span>
+                <span>Refresh</span>
               </button>
             </div>
             <div id="qa-list" class="qa-list" aria-live="polite"></div>

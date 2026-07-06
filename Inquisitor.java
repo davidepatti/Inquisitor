@@ -1,4 +1,5 @@
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -30,7 +31,7 @@ public class Inquisitor {
         try {
             String input = commandLineArgs;
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(input.getBytes());
+            byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
             StringBuilder hexString = new StringBuilder();
             for (int i = 0; i < 4; i++) { // First 4 bytes -> 8 hex chars
                 String hex = Integer.toHexString(0xff & digest[i]);
@@ -43,8 +44,17 @@ public class Inquisitor {
         }
     }
 
-    private static String generateObfuscatedExamId(String commandLineArgs, int examNumber) {
-        return generateExamIdPrefix(commandLineArgs) + examNumber;
+    private static String normalizeExamIdPrefix(String examId, String fallback) {
+        if (examId == null || examId.isBlank()) {
+            return fallback;
+        }
+
+        String normalized = examId.trim().replaceAll("[^A-Za-z0-9_-]", "");
+        return normalized.isBlank() ? fallback : normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private static String generateObfuscatedExamId(String examIdPrefix, int examNumber) {
+        return examIdPrefix + examNumber;
     }
 
     // Class to represent a question
@@ -84,8 +94,12 @@ public class Inquisitor {
         String heading = null;  // For the -h option
         String subheading = null; // For the -h2 option
         String basePath = null; // New argument for base path
+        String outputDir = null;
+        String examId = null;
+        String generatedAt = null;
+        Boolean compilePdf = null;
 
-        // Parse for --seed or -s, --total_exams or -t, --students or -st, -h, and -h2
+        // Parse for generation options and Electron-provided output package metadata.
         Iterator<String> iterator = argsList.iterator();
         while (iterator.hasNext()) {
             String arg = iterator.next();
@@ -162,6 +176,34 @@ public class Inquisitor {
                     System.out.println("Base path string missing after " + arg);
                     return;
                 }
+            } else if (arg.equalsIgnoreCase("--output_dir")) {
+                if (iterator.hasNext()) {
+                    outputDir = iterator.next();
+                } else {
+                    System.out.println("Output directory string missing after " + arg);
+                    return;
+                }
+            } else if (arg.equalsIgnoreCase("--exam_id")) {
+                if (iterator.hasNext()) {
+                    examId = iterator.next();
+                } else {
+                    System.out.println("Exam id string missing after " + arg);
+                    return;
+                }
+            } else if (arg.equalsIgnoreCase("--generated_at")) {
+                if (iterator.hasNext()) {
+                    generatedAt = iterator.next();
+                } else {
+                    System.out.println("Generation timestamp string missing after " + arg);
+                    return;
+                }
+            } else if (arg.equalsIgnoreCase("--compile_pdf")) {
+                if (iterator.hasNext()) {
+                    compilePdf = Boolean.parseBoolean(iterator.next());
+                } else {
+                    System.out.println("Compile PDF value missing after " + arg);
+                    return;
+                }
             }
         }
 
@@ -174,7 +216,11 @@ public class Inquisitor {
                 arg.equalsIgnoreCase("--total_exams") || arg.equalsIgnoreCase("-t") ||
                 arg.equalsIgnoreCase("--students") || arg.equalsIgnoreCase("-st") ||
                 arg.equalsIgnoreCase("-h") || arg.equalsIgnoreCase("-h2") ||
-                arg.equalsIgnoreCase("--base_path") || arg.equalsIgnoreCase("-b")) {
+                arg.equalsIgnoreCase("--base_path") || arg.equalsIgnoreCase("-b") ||
+                arg.equalsIgnoreCase("--output_dir") ||
+                arg.equalsIgnoreCase("--exam_id") ||
+                arg.equalsIgnoreCase("--generated_at") ||
+                arg.equalsIgnoreCase("--compile_pdf")) {
                 i++; // Skip the next argument as it's the value for the flag
             } else {
                 filteredArgs.add(arg);
@@ -190,6 +236,7 @@ public class Inquisitor {
 
         // Gather command line string for exam ID obfuscation
         String commandLineString = String.join(" ", args);
+        String filePrefix = normalizeExamIdPrefix(examId, generateExamIdPrefix(commandLineString));
 
         if (seed == null) {
             seed = defaultSeedForToday();
@@ -201,11 +248,16 @@ public class Inquisitor {
             heading = "Exam";
         }
 
-        // Create output folder name by concatenating HEADING and SEED with an underscore
-        String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
-        String outputFolderName = sanitizedHeading + "_" + seed;
-        Path outputBasePath = resolveOutputBasePath(basePath, filteredArgs);
-        Path outputFolderPath = outputBasePath.resolve(outputFolderName);
+        Path outputFolderPath;
+        if (outputDir != null && !outputDir.isBlank()) {
+            outputFolderPath = Paths.get(outputDir);
+        } else {
+            // Create output folder name by concatenating HEADING and SEED with an underscore.
+            String sanitizedHeading = heading.replaceAll("\\s+", "_"); // Replace spaces with underscores
+            String outputFolderName = sanitizedHeading + "_" + seed;
+            Path outputBasePath = resolveOutputBasePath(basePath, filteredArgs);
+            outputFolderPath = outputBasePath.resolve(outputFolderName);
+        }
 
         // Create the output folder if it doesn't exist
         if (!Files.exists(outputFolderPath)) {
@@ -219,17 +271,18 @@ public class Inquisitor {
             }
         }
 
-        // Initialize output filenames with the shared 8-hex exam ID prefix.
-        String filePrefix = generateExamIdPrefix(commandLineString);
+        // Initialize output filenames with the shared exam ID prefix.
         String outputFileName = filePrefix + "_all_exams.tex";
         String highlightedOutputFileName = filePrefix + "_all_exams_correct_answers.tex";
         String csvFileName = filePrefix + "_results.csv";
         String answersKeyFileName = filePrefix + "_answers_key.txt";
+        String examInstanceFileName = "exam-instance.json";
 
         Path outputFilePath = outputFolderPath.resolve(outputFileName);
         Path highlightedOutputFilePath = outputFolderPath.resolve(highlightedOutputFileName);
         Path csvFilePath = outputFolderPath.resolve(csvFileName);
         Path answersKeyFilePath = outputFolderPath.resolve(answersKeyFileName);
+        Path examInstanceFilePath = outputFolderPath.resolve(examInstanceFileName);
 
         // Initialize a list to collect all ExamData
         List<ExamData> examDataList = new ArrayList<>();
@@ -267,10 +320,10 @@ public class Inquisitor {
         int T = examDataList.get(0).correctAnswerIndices.size();
 
         try {
-            writeExamsLatex(outputFilePath, examDataList, commandLineString, heading, subheading, false);
+            writeExamsLatex(outputFilePath, examDataList, filePrefix, heading, subheading, false);
             System.out.println("Generated " + outputFilePath.getFileName() + " successfully.");
 
-            writeExamsLatex(highlightedOutputFilePath, examDataList, commandLineString, heading, subheading, true);
+            writeExamsLatex(highlightedOutputFilePath, examDataList, filePrefix, heading, subheading, true);
             System.out.println("Generated " + highlightedOutputFilePath.getFileName() + " successfully.");
 
             // Write results.csv with new columns
@@ -281,6 +334,24 @@ public class Inquisitor {
             writeAnswersKey(examDataList, answersKeyFilePath.toString());
             System.out.println("Generated " + answersKeyFileName + " successfully.");
 
+            writeExamInstanceJson(
+                    examInstanceFilePath,
+                    filePrefix,
+                    generatedAt,
+                    commandLineString,
+                    args,
+                    filteredArgs,
+                    basePath,
+                    heading,
+                    subheading,
+                    seed,
+                    examsToGenerate,
+                    totalStudents,
+                    compilePdf,
+                    examDataList
+            );
+            System.out.println("Generated " + examInstanceFileName + " successfully.");
+
         } catch (IOException e) {
             System.out.println("Error writing generator output.");
             e.printStackTrace();
@@ -290,7 +361,7 @@ public class Inquisitor {
     private static void writeExamsLatex(
             Path outputFilePath,
             List<ExamData> examDataList,
-            String commandLineString,
+            String examIdPrefix,
             String heading,
             String subheading,
             boolean highlightCorrectAnswers
@@ -308,7 +379,7 @@ public class Inquisitor {
                 }
 
                 // Write heading for each exam, with obfuscated exam ID
-                String obfuscatedExamId = generateObfuscatedExamId(commandLineString, ed.examNumber);
+                String obfuscatedExamId = generateObfuscatedExamId(examIdPrefix, ed.examNumber);
                 writer.write("\\section*{" + escapeLatex(heading) + " \\footnotesize [" + obfuscatedExamId + "]}");
                 writer.newLine();
 
@@ -617,6 +688,186 @@ public class Inquisitor {
                 writer.newLine();
             }
         }
+    }
+
+    private static void writeExamInstanceJson(
+            Path outputFilePath,
+            String examId,
+            String generatedAt,
+            String commandLineString,
+            String[] args,
+            List<String> filteredArgs,
+            String basePath,
+            String heading,
+            String subheading,
+            long seed,
+            int totalExams,
+            Integer totalStudents,
+            Boolean compilePdf,
+            List<ExamData> examDataList
+    ) throws IOException {
+        StringBuilder json = new StringBuilder();
+        json.append("{\n");
+        json.append("  \"schemaVersion\": 1,\n");
+        json.append("  \"type\": \"inquisitor.examInstance\",\n");
+        json.append("  \"examId\": ").append(jsonString(examId)).append(",\n");
+        json.append("  \"generatedAt\": ").append(jsonString(generatedAt)).append(",\n");
+        json.append("  \"commandLine\": {\n");
+        json.append("    \"raw\": ").append(jsonString(commandLineString)).append(",\n");
+        json.append("    \"args\": ");
+        appendJsonStringArray(json, args);
+        json.append("\n");
+        json.append("  },\n");
+        json.append("  \"config\": {\n");
+        json.append("    \"basePath\": ").append(jsonString(basePath)).append(",\n");
+        json.append("    \"heading\": ").append(jsonString(heading)).append(",\n");
+        json.append("    \"subheading\": ").append(jsonString(subheading)).append(",\n");
+        json.append("    \"seed\": ").append(seed).append(",\n");
+        json.append("    \"totalExams\": ").append(totalExams).append(",\n");
+        json.append("    \"totalStudents\": ").append(totalStudents == null ? "null" : totalStudents).append(",\n");
+        json.append("    \"compilePdf\": ").append(compilePdf == null ? "null" : compilePdf).append(",\n");
+        json.append("    \"selections\": ");
+        appendSelectionsJson(json, filteredArgs, "    ");
+        json.append("\n");
+        json.append("  },\n");
+        json.append("  \"exams\": [\n");
+
+        for (int examIndex = 0; examIndex < examDataList.size(); examIndex++) {
+            ExamData ed = examDataList.get(examIndex);
+            json.append("    {\n");
+            json.append("      \"examNumber\": ").append(ed.examNumber).append(",\n");
+            json.append("      \"seed\": ").append(ed.seed).append(",\n");
+            json.append("      \"correctAnswerIndices\": ");
+            appendIntegerListJson(json, ed.correctAnswerIndices);
+            json.append(",\n");
+            json.append("      \"correctAnswers\": ").append(jsonString(buildCorrectAnswersString(ed))).append(",\n");
+            json.append("      \"questions\": [\n");
+
+            for (int questionIndex = 0; questionIndex < ed.questions.size(); questionIndex++) {
+                Question question = ed.questions.get(questionIndex);
+                json.append("        {\n");
+                json.append("          \"number\": ").append(questionIndex + 1).append(",\n");
+                json.append("          \"text\": ").append(jsonString(question.text)).append(",\n");
+                json.append("          \"answers\": ");
+                appendJsonStringList(json, question.answers);
+                json.append(",\n");
+                json.append("          \"correctAnswerIndex\": ").append(question.correctAnswerIndex).append("\n");
+                json.append("        }");
+                if (questionIndex < ed.questions.size() - 1) {
+                    json.append(",");
+                }
+                json.append("\n");
+            }
+
+            json.append("      ]\n");
+            json.append("    }");
+            if (examIndex < examDataList.size() - 1) {
+                json.append(",");
+            }
+            json.append("\n");
+        }
+
+        json.append("  ]\n");
+        json.append("}\n");
+
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFilePath, StandardCharsets.UTF_8)) {
+            writer.write(json.toString());
+        }
+    }
+
+    private static void appendSelectionsJson(StringBuilder json, List<String> filteredArgs, String indent) {
+        if (filteredArgs.isEmpty()) {
+            json.append("[]");
+            return;
+        }
+
+        json.append("[\n");
+        for (int i = 0; i < filteredArgs.size(); i += 2) {
+            json.append(indent).append("  {\n");
+            json.append(indent).append("    \"count\": ").append(filteredArgs.get(i)).append(",\n");
+            json.append(indent).append("    \"fileName\": ").append(jsonString(filteredArgs.get(i + 1))).append("\n");
+            json.append(indent).append("  }");
+            if (i + 2 < filteredArgs.size()) {
+                json.append(",");
+            }
+            json.append("\n");
+        }
+        json.append(indent).append("]");
+    }
+
+    private static void appendIntegerListJson(StringBuilder json, List<Integer> values) {
+        json.append("[");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                json.append(", ");
+            }
+            json.append(values.get(i));
+        }
+        json.append("]");
+    }
+
+    private static void appendJsonStringArray(StringBuilder json, String[] values) {
+        json.append("[");
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) {
+                json.append(", ");
+            }
+            json.append(jsonString(values[i]));
+        }
+        json.append("]");
+    }
+
+    private static void appendJsonStringList(StringBuilder json, List<String> values) {
+        json.append("[");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                json.append(", ");
+            }
+            json.append(jsonString(values.get(i)));
+        }
+        json.append("]");
+    }
+
+    private static String jsonString(String text) {
+        if (text == null) {
+            return "null";
+        }
+
+        StringBuilder escaped = new StringBuilder("\"");
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '"':
+                    escaped.append("\\\"");
+                    break;
+                case '\\':
+                    escaped.append("\\\\");
+                    break;
+                case '\b':
+                    escaped.append("\\b");
+                    break;
+                case '\f':
+                    escaped.append("\\f");
+                    break;
+                case '\n':
+                    escaped.append("\\n");
+                    break;
+                case '\r':
+                    escaped.append("\\r");
+                    break;
+                case '\t':
+                    escaped.append("\\t");
+                    break;
+                default:
+                    if (c < 0x20) {
+                        escaped.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        escaped.append(c);
+                    }
+            }
+        }
+        escaped.append("\"");
+        return escaped.toString();
     }
 
     /**

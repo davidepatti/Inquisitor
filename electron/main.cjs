@@ -9,6 +9,9 @@ const projectRoot = path.resolve(__dirname, "..");
 const rendererEntry = path.join(projectRoot, "renderer", "index.html");
 const javaClassesDir = path.join(projectRoot, "build", "electron-java", "classes");
 const defaultProfilePath = path.join(projectRoot, "courses.properties");
+const packageJson = require(path.join(projectRoot, "package.json"));
+const examInstanceFileName = "exam-instance.json";
+const examManifestFileName = "exam-manifest.json";
 
 let mainWindow = null;
 let allowWindowClose = false;
@@ -518,18 +521,155 @@ function countQuestionBankEntries(text) {
 }
 
 function sanitizeHeading(heading) {
-  return String(heading || "Exam").trim().replace(/\s+/g, "_");
+  const sanitized = String(heading || "Exam")
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return sanitized || "Exam";
 }
 
-function generateExamIdPrefix(commandLineArgs) {
-  return crypto.createHash("sha256").update(commandLineArgs).digest("hex").slice(0, 8).toUpperCase();
+function sha256Hex(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
-function buildOutputPaths(config, generatorArgs = buildJavaArgs(config)) {
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  return `{${Object.keys(value).sort().map((key) => (
+    `${JSON.stringify(key)}:${stableStringify(value[key])}`
+  )).join(",")}}`;
+}
+
+function formatRunTimestamp(date) {
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  const ms = String(date.getMilliseconds()).padStart(3, "0");
+  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}-${ms}`;
+}
+
+function ensureUniqueOutputDir(candidatePath) {
+  if (!fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+
+  for (let suffix = 2; suffix < 1000; suffix += 1) {
+    const alternatePath = `${candidatePath}-${suffix}`;
+    if (!fs.existsSync(alternatePath)) {
+      return alternatePath;
+    }
+  }
+
+  throw new Error(`Unable to find a unique output directory near ${candidatePath}`);
+}
+
+function normalizeGenerationConfig(config) {
   const seed = nonNegativeInteger(config.seed, defaultSeedForToday());
   const heading = config.heading && config.heading.trim() ? config.heading.trim() : "Exam";
-  const outputDir = path.resolve(config.basePath, `${sanitizeHeading(heading)}_${seed}`);
-  const filePrefix = generateExamIdPrefix(generatorArgs.join(" "));
+  const basePath = path.resolve(config.basePath || ".");
+  return {
+    basePath,
+    heading,
+    subheading: config.subheading && config.subheading.trim() ? config.subheading.trim() : "",
+    seed,
+    totalExams: Math.max(1, Number(config.totalExams || 1)),
+    totalStudents: Math.max(1, Number(config.totalStudents || 1)),
+    compilePdf: config.compilePdf !== false,
+    selections: (config.selections || [])
+      .map((selection) => ({
+        fileName: String(selection.fileName || "").trim(),
+        count: Math.max(0, Number(selection.count || 0))
+      }))
+      .filter((selection) => selection.fileName && selection.count > 0)
+  };
+}
+
+async function hashSelectedSourceFiles(config) {
+  const sourceFiles = [];
+  for (const selection of config.selections) {
+    const filePath = path.resolve(config.basePath, selection.fileName);
+    const data = await fsp.readFile(filePath);
+    sourceFiles.push({
+      fileName: selection.fileName,
+      path: filePath,
+      count: selection.count,
+      size: data.length,
+      sha256: sha256Hex(data)
+    });
+  }
+  return sourceFiles;
+}
+
+async function hashFile(filePath) {
+  return sha256Hex(await fsp.readFile(filePath));
+}
+
+async function buildExamPackage(config) {
+  const normalizedConfig = normalizeGenerationConfig(config);
+  if (normalizedConfig.selections.length === 0) {
+    throw new Error("Select at least one question before generating.");
+  }
+
+  const generatedAt = new Date();
+  const timestamp = formatRunTimestamp(generatedAt);
+  const sourceFiles = await hashSelectedSourceFiles(normalizedConfig);
+  const generatorClassPath = path.join(javaClassesDir, "Inquisitor.class");
+  const generatorClassSha256 = await hashFile(generatorClassPath);
+  const { basePath: _basePath, compilePdf: _compilePdf, ...fingerprintConfig } = normalizedConfig;
+  const fingerprintPayload = {
+    schemaVersion: 1,
+    generator: {
+      name: "Inquisitor",
+      appVersion: packageJson.version || "0.0.0",
+      classSha256: generatorClassSha256
+    },
+    config: fingerprintConfig,
+    sourceFiles: sourceFiles.map((file) => ({
+      fileName: file.fileName,
+      count: file.count,
+      size: file.size,
+      sha256: file.sha256
+    }))
+  };
+  const examHash = sha256Hex(stableStringify(fingerprintPayload));
+  const examId = examHash.slice(0, 12).toUpperCase();
+  const outputDirBase = path.resolve(
+    normalizedConfig.basePath,
+    `${sanitizeHeading(normalizedConfig.heading)}_${normalizedConfig.seed}_${timestamp}_${examId}`
+  );
+  const outputDir = ensureUniqueOutputDir(outputDirBase);
+  const packageInfo = {
+    schemaVersion: 1,
+    type: "inquisitor.examPackage",
+    appVersion: packageJson.version || "0.0.0",
+    generatedAt: generatedAt.toISOString(),
+    timestamp,
+    examId,
+    examHash,
+    generatorClassSha256,
+    outputDir,
+    config: normalizedConfig,
+    sourceFiles,
+    fingerprintPayload
+  };
+
+  const generatorArgs = buildJavaArgs(normalizedConfig, packageInfo);
+  const outputPaths = buildOutputPaths(normalizedConfig, packageInfo);
+  return { config: normalizedConfig, generatorArgs, outputPaths, packageInfo };
+}
+
+function buildOutputPaths(_config, packageInfo) {
+  const outputDir = packageInfo.outputDir;
+  const filePrefix = packageInfo.examId;
   return {
     outputDir,
     texPath: path.join(outputDir, `${filePrefix}_all_exams.tex`),
@@ -537,23 +677,28 @@ function buildOutputPaths(config, generatorArgs = buildJavaArgs(config)) {
     csvPath: path.join(outputDir, `${filePrefix}_results.csv`),
     answersPath: path.join(outputDir, `${filePrefix}_answers_key.txt`),
     pdfPath: path.join(outputDir, `${filePrefix}_all_exams.pdf`),
-    highlightedPdfPath: path.join(outputDir, `${filePrefix}_all_exams_correct_answers.pdf`)
+    highlightedPdfPath: path.join(outputDir, `${filePrefix}_all_exams_correct_answers.pdf`),
+    examInstancePath: path.join(outputDir, examInstanceFileName),
+    manifestPath: path.join(outputDir, examManifestFileName)
   };
 }
 
 function outputFileState(outputPaths) {
+  const exists = (filePath) => Boolean(filePath && fs.existsSync(filePath));
   return {
-    outputDir: fs.existsSync(outputPaths.outputDir),
-    tex: fs.existsSync(outputPaths.texPath),
-    highlightedTex: fs.existsSync(outputPaths.highlightedTexPath),
-    csv: fs.existsSync(outputPaths.csvPath),
-    answers: fs.existsSync(outputPaths.answersPath),
-    pdf: fs.existsSync(outputPaths.pdfPath),
-    highlightedPdf: fs.existsSync(outputPaths.highlightedPdfPath)
+    outputDir: exists(outputPaths.outputDir),
+    tex: exists(outputPaths.texPath),
+    highlightedTex: exists(outputPaths.highlightedTexPath),
+    csv: exists(outputPaths.csvPath),
+    answers: exists(outputPaths.answersPath),
+    pdf: exists(outputPaths.pdfPath),
+    highlightedPdf: exists(outputPaths.highlightedPdfPath),
+    examInstance: exists(outputPaths.examInstancePath),
+    manifest: exists(outputPaths.manifestPath)
   };
 }
 
-function buildJavaArgs(config) {
+function buildJavaArgs(config, packageInfo = null) {
   const args = ["--base_path", config.basePath];
   for (const selection of config.selections || []) {
     const count = Number(selection.count);
@@ -568,7 +713,121 @@ function buildJavaArgs(config) {
   if (config.subheading && config.subheading.trim()) {
     args.push("-h2", config.subheading.trim());
   }
+  if (packageInfo) {
+    args.push("--output_dir", packageInfo.outputDir);
+    args.push("--exam_id", packageInfo.examId);
+    args.push("--generated_at", packageInfo.generatedAt);
+    args.push("--compile_pdf", config.compilePdf !== false ? "true" : "false");
+  }
   return args;
+}
+
+async function fileDigestState(filePath, outputDir) {
+  try {
+    const data = await fsp.readFile(filePath);
+    const stats = await fsp.stat(filePath);
+    return {
+      path: filePath,
+      relativePath: path.relative(outputDir, filePath),
+      exists: true,
+      size: stats.size,
+      sha256: sha256Hex(data)
+    };
+  } catch (_error) {
+    return {
+      path: filePath,
+      relativePath: path.relative(outputDir, filePath),
+      exists: false,
+      size: 0,
+      sha256: null
+    };
+  }
+}
+
+async function writeExamManifest(packageInfo, outputPaths, status) {
+  await fsp.mkdir(outputPaths.outputDir, { recursive: true });
+  const outputs = {
+    tex: await fileDigestState(outputPaths.texPath, outputPaths.outputDir),
+    highlightedTex: await fileDigestState(outputPaths.highlightedTexPath, outputPaths.outputDir),
+    csv: await fileDigestState(outputPaths.csvPath, outputPaths.outputDir),
+    answers: await fileDigestState(outputPaths.answersPath, outputPaths.outputDir),
+    pdf: await fileDigestState(outputPaths.pdfPath, outputPaths.outputDir),
+    highlightedPdf: await fileDigestState(outputPaths.highlightedPdfPath, outputPaths.outputDir),
+    examInstance: await fileDigestState(outputPaths.examInstancePath, outputPaths.outputDir)
+  };
+  const manifest = {
+    schemaVersion: 1,
+    type: "inquisitor.examManifest",
+    appVersion: packageInfo.appVersion,
+    generatedAt: packageInfo.generatedAt,
+    completedAt: new Date().toISOString(),
+    examId: packageInfo.examId,
+    examHash: packageInfo.examHash,
+    generatorClassSha256: packageInfo.generatorClassSha256,
+    outputDir: outputPaths.outputDir,
+    outputPaths,
+    config: packageInfo.config,
+    sourceFiles: packageInfo.sourceFiles,
+    fingerprintPayload: packageInfo.fingerprintPayload,
+    status,
+    outputs
+  };
+  await fsp.writeFile(outputPaths.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return manifest;
+}
+
+async function loadJsonFile(filePath) {
+  const text = await fsp.readFile(filePath, "utf8");
+  return JSON.parse(text);
+}
+
+async function chooseExamInstancePath() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Load exam instance",
+    defaultPath: projectRoot,
+    properties: ["openFile"],
+    filters: [{ name: "Inquisitor exam instances", extensions: ["json"] }]
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+}
+
+async function loadExamInstanceFile(filePath) {
+  const normalizedPath = path.resolve(filePath);
+  const instance = await loadJsonFile(normalizedPath);
+  const outputDir = path.dirname(normalizedPath);
+  const manifestPath = path.join(outputDir, examManifestFileName);
+  const manifest = fs.existsSync(manifestPath) ? await loadJsonFile(manifestPath) : null;
+  const outputPaths = manifest?.outputPaths || inferOutputPathsFromInstance(instance, outputDir);
+
+  return {
+    path: normalizedPath,
+    outputDir,
+    instance,
+    manifest,
+    outputPaths,
+    files: outputPaths ? outputFileState(outputPaths) : {}
+  };
+}
+
+function inferOutputPathsFromInstance(instance, outputDir) {
+  const examId = instance?.examId || instance?.examIdPrefix;
+  if (!examId) {
+    return null;
+  }
+  return {
+    outputDir,
+    texPath: path.join(outputDir, `${examId}_all_exams.tex`),
+    highlightedTexPath: path.join(outputDir, `${examId}_all_exams_correct_answers.tex`),
+    csvPath: path.join(outputDir, `${examId}_results.csv`),
+    answersPath: path.join(outputDir, `${examId}_answers_key.txt`),
+    pdfPath: path.join(outputDir, `${examId}_all_exams.pdf`),
+    highlightedPdfPath: path.join(outputDir, `${examId}_all_exams_correct_answers.pdf`),
+    examInstancePath: path.join(outputDir, examInstanceFileName),
+    manifestPath: path.join(outputDir, examManifestFileName)
+  };
 }
 
 function runProcess(command, args, options, onLine) {
@@ -661,14 +920,22 @@ async function runGeneration(event, config) {
     throw new Error("Java CLI classes are missing. Run `npm run java:build` first.");
   }
 
-  const generatorArgs = buildJavaArgs(config);
+  const examPackage = await buildExamPackage(config);
+  const { generatorArgs, outputPaths, packageInfo } = examPackage;
   const javaArgs = ["-cp", javaClassesDir, "Inquisitor", ...generatorArgs];
-  const outputPaths = buildOutputPaths(config, generatorArgs);
 
   sendLog("Starting Java generator.");
+  sendLog(`Exam package: ${outputPaths.outputDir}`);
+  sendLog(`Exam fingerprint: ${packageInfo.examId}`);
   const javaExit = await runProcess("java", javaArgs, { cwd: projectRoot }, sendLog);
   if (javaExit !== 0) {
     sendLog(`Java generator exited with code ${javaExit}.`, "error");
+    await writeExamManifest(packageInfo, outputPaths, {
+      ok: false,
+      javaExit,
+      pdfExit: null,
+      highlightedPdfExit: null
+    });
     return { ok: false, javaExit, pdfExit: null, outputPaths, files: outputFileState(outputPaths), runId };
   }
 
@@ -684,10 +951,18 @@ async function runGeneration(event, config) {
     }
   }
 
+  const ok = javaExit === 0
+    && (pdfExit == null || pdfExit === 0)
+    && (highlightedPdfExit == null || highlightedPdfExit === 0);
+  await writeExamManifest(packageInfo, outputPaths, {
+    ok,
+    javaExit,
+    pdfExit,
+    highlightedPdfExit
+  });
+
   return {
-    ok: javaExit === 0
-      && (pdfExit == null || pdfExit === 0)
-      && (highlightedPdfExit == null || highlightedPdfExit === 0),
+    ok,
     javaExit,
     pdfExit,
     highlightedPdfExit,
@@ -701,9 +976,7 @@ function registerIpc() {
   ipcMain.handle("app:getState", async () => ({
     projectRoot,
     defaultProfilePath,
-    defaultSeed: defaultSeedForToday(),
-    javaReady: fs.existsSync(path.join(javaClassesDir, "Inquisitor.class")),
-    pdflatexAvailable: await checkCommand("pdflatex", ["--version"])
+    defaultSeed: defaultSeedForToday()
   }));
 
   ipcMain.handle("profile:loadDefault", async () => loadProfileFile(defaultProfilePath));
@@ -746,6 +1019,11 @@ function registerIpc() {
 
   ipcMain.handle("qa:list", async (_event, basePath) => listQaFiles(basePath));
   ipcMain.handle("generation:run", runGeneration);
+
+  ipcMain.handle("exam:chooseAndLoad", async () => {
+    const filePath = await chooseExamInstancePath();
+    return filePath ? loadExamInstanceFile(filePath) : null;
+  });
 
   ipcMain.handle("path:open", async (_event, filePath) => {
     if (!filePath) {
