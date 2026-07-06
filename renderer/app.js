@@ -120,7 +120,6 @@ function editableProfile() {
   captureCurrentCourse();
   state.profile.name = el.profileName.value.trim() || "Inquisitor";
   state.profile.seed = Math.max(0, numberValue(el.seedInput, nonNegativeValue(state.profile.seed, state.app?.defaultSeed || 0)));
-  state.profile.compilePdf = el.compilePdfInput.checked;
   state.profile.selectedCourseIndex = state.currentCourseIndex;
   return state.profile;
 }
@@ -133,7 +132,6 @@ function profileSnapshot(profile) {
   return JSON.stringify({
     name: profile.name || "Inquisitor",
     seed: nonNegativeValue(profile.seed, state.app?.defaultSeed || 0),
-    compilePdf: profile.compilePdf !== false,
     selectedCourseIndex: Number(profile.selectedCourseIndex || 0),
     courses: (profile.courses || []).map((course) => ({
       name: course.name || "",
@@ -194,8 +192,6 @@ function renderProfile() {
   }
 
   el.profileName.value = state.profile.name || "Inquisitor";
-  el.profilePath.textContent = state.profile.path || "";
-  el.compilePdfInput.checked = state.profile.compilePdf !== false;
   renderCourseOptions();
 }
 
@@ -278,7 +274,6 @@ function renderQaFiles() {
     row.innerHTML = `
       <div class="qa-name">
         <strong title="${escapeAttribute(file.fileName)}">${escapeHtml(file.fileName)}</strong>
-        <span>${escapeHtml(file.path)}</span>
       </div>
       <div class="qa-available">${file.questionCount} available</div>
       <div class="qa-counter">
@@ -352,10 +347,6 @@ function setOutput(result) {
   state.lastResult = result;
   const paths = result?.outputPaths;
   const files = result?.files || {};
-  const ok = Boolean(result?.ok);
-  el.outputSummary.textContent = paths
-    ? `${ok ? "Generated" : "Finished with warnings"}: ${paths.outputDir}`
-    : "No generation yet.";
 
   el.openPdfBtn.disabled = !paths?.pdfPath || !files.pdf;
   el.openHighlightedPdfBtn.disabled = !paths?.highlightedPdfPath || !files.highlightedPdf;
@@ -382,7 +373,7 @@ async function runGeneration() {
     seed: Math.max(0, numberValue(el.seedInput, courseSeedValue(course))),
     totalExams: Math.max(1, numberValue(el.totalExamsInput, 1)),
     totalStudents: Math.max(1, numberValue(el.totalStudentsInput, 1)),
-    compilePdf: el.compilePdfInput.checked,
+    compilePdf: true,
     selections
   };
 
@@ -411,7 +402,7 @@ async function loadDefaultProfile() {
 }
 
 async function chooseAndLoadProfile() {
-  const profilePath = await api.chooseProfilePath();
+  const profilePath = await api.chooseProfilePath(state.profile?.path);
   if (!profilePath) {
     return;
   }
@@ -517,7 +508,6 @@ async function applyExamInstance(loadResult) {
     };
   }
 
-  state.profile.compilePdf = config.compilePdf !== false;
   state.profile.seed = loadedCourse.seed;
   state.currentCourseIndex = index;
   state.profile.selectedCourseIndex = index;
@@ -670,7 +660,6 @@ function escapeAttribute(value) {
 function bindElements() {
   [
     "profile-name",
-    "profile-path",
     "load-profile-btn",
     "save-profile-btn",
     "load-exam-btn",
@@ -687,10 +676,8 @@ function bindElements() {
     "base-path-input",
     "qa-list",
     "total-questions",
-    "compile-pdf-input",
     "generate-btn",
     "generate-help",
-    "output-summary",
     "open-pdf-btn",
     "open-highlighted-pdf-btn",
     "open-tex-btn",
@@ -720,11 +707,6 @@ function bindEvents() {
   el.browseFolderBtn.addEventListener("click", browseFolder);
   el.refreshQaBtn.addEventListener("click", refreshQaFiles);
   el.generateBtn.addEventListener("click", runGeneration);
-  el.compilePdfInput.addEventListener("change", () => {
-    if (state.profile) {
-      state.profile.compilePdf = el.compilePdfInput.checked;
-    }
-  });
   el.basePathInput.addEventListener("change", refreshQaFiles);
   el.qaList.addEventListener("input", updateTotal);
   el.qaList.addEventListener("click", (event) => {

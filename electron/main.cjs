@@ -143,10 +143,26 @@ async function saveProfileToCurrentPath(profile) {
   return saveProfileFile(profile, profile.path);
 }
 
-async function chooseProfilePath() {
+function dialogStartDirectory(startPath) {
+  if (!startPath) {
+    return projectRoot;
+  }
+  const normalizedPath = path.resolve(startPath);
+  if (!fs.existsSync(normalizedPath)) {
+    return projectRoot;
+  }
+  try {
+    const stats = fs.statSync(normalizedPath);
+    return stats.isDirectory() ? normalizedPath : path.dirname(normalizedPath);
+  } catch (_error) {
+    return projectRoot;
+  }
+}
+
+async function chooseProfilePath(startPath) {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: "Load profile",
-    defaultPath: projectRoot,
+    defaultPath: dialogStartDirectory(startPath),
     properties: ["openFile"],
     filters: [{ name: "Inquisitor profiles", extensions: ["properties"] }]
   });
@@ -311,13 +327,6 @@ function courseSeedValue(course, fallbackSeed) {
   return nonNegativeInteger(course?.seed, fallbackSeed);
 }
 
-function parseBoolean(value, fallback = true) {
-  if (value == null || value === "") {
-    return fallback;
-  }
-  return String(value).trim().toLowerCase() === "true";
-}
-
 function defaultHeadingForCourse(name) {
   return name && name.trim() ? name.trim() : "Exam";
 }
@@ -392,7 +401,6 @@ async function loadProfileFile(filePath) {
     name: props["profile.name"] || profileNameFromPath(normalizedPath),
     path: normalizedPath,
     seed: profileSeed,
-    compilePdf: parseBoolean(props["profile.compilePdf"], true),
     selectedCourseIndex: parseInteger(props["profile.selectedCourse"], 0),
     courses: []
   };
@@ -465,7 +473,6 @@ async function saveProfileFile(profile, filePath) {
     "# Inquisitor Electron profile",
     `profile.name=${escapeProperty(profile.name || profileNameFromPath(normalizedPath))}`,
     `profile.seed=${profileSeed}`,
-    `profile.compilePdf=${profile.compilePdf === false ? "false" : "true"}`,
     `profile.selectedCourse=${Number(profile.selectedCourseIndex || 0)}`,
     `courses=${profile.courses.map((_, index) => index + 1).join(",")}`
   ];
@@ -583,7 +590,7 @@ function normalizeGenerationConfig(config) {
     seed,
     totalExams: Math.max(1, Number(config.totalExams || 1)),
     totalStudents: Math.max(1, Number(config.totalStudents || 1)),
-    compilePdf: config.compilePdf !== false,
+    compilePdf: true,
     selections: (config.selections || [])
       .map((selection) => ({
         fileName: String(selection.fileName || "").trim(),
@@ -717,7 +724,7 @@ function buildJavaArgs(config, packageInfo = null) {
     args.push("--output_dir", packageInfo.outputDir);
     args.push("--exam_id", packageInfo.examId);
     args.push("--generated_at", packageInfo.generatedAt);
-    args.push("--compile_pdf", config.compilePdf !== false ? "true" : "false");
+    args.push("--compile_pdf", "true");
   }
   return args;
 }
@@ -941,14 +948,12 @@ async function runGeneration(event, config) {
 
   let pdfExit = null;
   let highlightedPdfExit = null;
-  if (config.compilePdf) {
-    const pdflatexAvailable = await checkCommand("pdflatex", ["--version"]);
-    if (!pdflatexAvailable) {
-      sendLog("pdflatex was not found. LaTeX, CSV, and answer key were still generated.", "warning");
-    } else {
-      pdfExit = await compilePdfFromTex(outputPaths.texPath, outputPaths.outputDir, sendLog, "exam");
-      highlightedPdfExit = await compilePdfFromTex(outputPaths.highlightedTexPath, outputPaths.outputDir, sendLog, "answer-highlighted");
-    }
+  const pdflatexAvailable = await checkCommand("pdflatex", ["--version"]);
+  if (!pdflatexAvailable) {
+    sendLog("pdflatex was not found. LaTeX, CSV, and answer key were still generated.", "warning");
+  } else {
+    pdfExit = await compilePdfFromTex(outputPaths.texPath, outputPaths.outputDir, sendLog, "exam");
+    highlightedPdfExit = await compilePdfFromTex(outputPaths.highlightedTexPath, outputPaths.outputDir, sendLog, "answer-highlighted");
   }
 
   const ok = javaExit === 0
@@ -981,11 +986,11 @@ function registerIpc() {
 
   ipcMain.handle("profile:loadDefault", async () => loadProfileFile(defaultProfilePath));
 
-  ipcMain.handle("profile:choosePath", async () => chooseProfilePath());
+  ipcMain.handle("profile:choosePath", async (_event, startPath) => chooseProfilePath(startPath));
   ipcMain.handle("profile:loadPath", async (_event, filePath) => loadProfileFile(filePath));
 
-  ipcMain.handle("profile:chooseAndLoad", async () => {
-    const filePath = await chooseProfilePath();
+  ipcMain.handle("profile:chooseAndLoad", async (_event, startPath) => {
+    const filePath = await chooseProfilePath(startPath);
     return filePath ? loadProfileFile(filePath) : null;
   });
 

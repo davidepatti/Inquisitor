@@ -17,45 +17,46 @@
           </div>
         </div>
 
-        <div class="header-field profile-field">
-          <label for="profile-name">Profile</label>
-          <input id="profile-name" type="text" spellcheck="false">
+        <div class="header-section profile-section">
+          <div class="header-section-body">
+            <label class="header-field profile-field" for="profile-name">
+              <span>Profile name</span>
+              <input id="profile-name" type="text" spellcheck="false">
+            </label>
+            <div class="header-actions">
+              <button id="load-profile-btn" class="button load" type="button">
+                <span data-icon="upload"></span>
+                <span>Load</span>
+              </button>
+              <button id="save-profile-btn" class="button save" type="button">
+                <span data-icon="save"></span>
+                <span>Save</span>
+              </button>
+              <button id="load-exam-btn" class="button exam" type="button">
+                <span data-icon="files"></span>
+                <span>Load Exam</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="header-field profile-path-field">
-          <label>Profile file</label>
-          <div id="profile-path" class="small-path"></div>
-        </div>
-
-        <div class="header-actions">
-          <button id="load-profile-btn" class="button secondary" type="button">
-            <span data-icon="upload"></span>
-            <span>Load</span>
-          </button>
-          <button id="save-profile-btn" class="button secondary" type="button">
-            <span data-icon="save"></span>
-            <span>Save</span>
-          </button>
-          <button id="load-exam-btn" class="button secondary" type="button">
-            <span data-icon="files"></span>
-            <span>Load Exam</span>
-          </button>
-        </div>
-
-        <div class="header-field course-picker">
-          <label for="course-select">Course</label>
-          <select id="course-select"></select>
-        </div>
-
-        <div class="header-actions course-controls" aria-label="Course actions">
-          <button id="add-course-btn" class="button secondary course-action" type="button" title="Add course">
-            <span data-icon="plus"></span>
-            <span class="course-action-label">Add</span>
-          </button>
-          <button id="remove-course-btn" class="button secondary danger course-action" type="button" title="Remove course">
-            <span data-icon="trash"></span>
-            <span class="course-action-label">Remove</span>
-          </button>
+        <div class="header-section course-section">
+          <div class="header-section-body">
+            <label class="header-field course-picker" for="course-select">
+              <span>Course current</span>
+              <select id="course-select"></select>
+            </label>
+            <div class="header-actions course-controls" aria-label="Course actions">
+              <button id="add-course-btn" class="button add course-action" type="button" title="Add course">
+                <span data-icon="plus"></span>
+                <span class="course-action-label">Add</span>
+              </button>
+              <button id="remove-course-btn" class="button danger course-action" type="button" title="Remove course">
+                <span data-icon="trash"></span>
+                <span class="course-action-label">Remove</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -116,36 +117,29 @@
               </button>
             </div>
             <div id="qa-list" class="qa-list" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <section class="generate-strip">
-          <div class="selected-count">
-            <span data-icon="list-check"></span>
-            <strong id="total-questions">0</strong>
-            <span>selected questions</span>
-          </div>
-          <label class="toggle">
-            <input id="compile-pdf-input" type="checkbox">
-            <span></span>
-            <strong>Compile PDF</strong>
-          </label>
-          <div class="generate-action">
-            <button id="generate-btn" class="button primary" type="button" disabled>
-              <span data-icon="play"></span>
-              <span>Generate</span>
-            </button>
-            <div id="generate-help" class="generate-help" role="status" aria-live="polite">Select at least one question.</div>
+            <div class="qa-footer">
+              <div class="selected-count">
+                <span data-icon="list-check"></span>
+                <strong id="total-questions">0</strong>
+                <span>selected questions</span>
+              </div>
+            </div>
           </div>
         </section>
 
         <section class="output-grid">
           <div class="panel output-panel">
-            <div class="panel-title">
+            <div class="panel-title output-title">
               <span data-icon="files"></span>
               <h3>Output</h3>
+              <div class="generate-action">
+                <button id="generate-btn" class="button primary" type="button" disabled>
+                  <span data-icon="play"></span>
+                  <span>Generate</span>
+                </button>
+                <div id="generate-help" class="generate-help" role="status" aria-live="polite">Select at least one question.</div>
+              </div>
             </div>
-            <div id="output-summary" class="output-summary">No generation yet.</div>
             <div class="output-actions">
               <button id="open-pdf-btn" class="button secondary" type="button" disabled>
                 <span data-icon="file-check"></span>

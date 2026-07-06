@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("inquisitor", {
   getAppState: () => ipcRenderer.invoke("app:getState"),
   loadDefaultProfile: () => ipcRenderer.invoke("profile:loadDefault"),
-  chooseProfilePath: () => ipcRenderer.invoke("profile:choosePath"),
+  chooseProfilePath: (startPath) => ipcRenderer.invoke("profile:choosePath", startPath),
   loadProfilePath: (filePath) => ipcRenderer.invoke("profile:loadPath", filePath),
   chooseAndLoadProfile: () => ipcRenderer.invoke("profile:chooseAndLoad"),
   resolveUnsavedProfileChanges: (profile, actionDescription) => (
