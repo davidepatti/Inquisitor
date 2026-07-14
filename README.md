@@ -46,7 +46,10 @@ If your IntelliJ edition does not load npm run configurations, use the Terminal 
 Useful scripts:
 
 - `npm run java:build`: compiles `Inquisitor.java` into `build/electron-java/classes`
+- `npm run java:jar`: compiles the Java CLI and packages `build/electron-java/inquisitor.jar`
 - `npm run check`: syntax-checks the Electron main, preload, and renderer scripts
+- `npm run doctor`: checks local Java, Node, Electron, and optional `pdflatex` availability
+- `npm test`: runs JavaScript syntax checks, compiles Java, and runs the regression generator fixture
 - `npm run qa:convert -- path/to/questions`: converts old `.qa` files to `.qa.md`
 
 The Electron UI loads `courses.properties`, scans `.qa.md` question-bank folders, runs the Java CLI, streams the generation log, and optionally calls `pdflatex` when it is available.
@@ -110,6 +113,24 @@ java -cp build/electron-java/classes Inquisitor n1 file1.qa.md n2 file2.qa.md \
   -h "Exam Heading" \
   -h2 "Exam Subheading"
 ```
+
+Or run a packaged JAR after `npm run java:jar`:
+
+```bash
+java -jar build/electron-java/inquisitor.jar n1 file1.qa.md n2 file2.qa.md \
+  --base_path ./questions \
+  --seed 20260604 \
+  --total_exams 8 \
+  --students 120
+```
+
+The Java CLI also accepts an optional JSON config file:
+
+```bash
+java -cp build/electron-java/classes Inquisitor --config run.json
+```
+
+Supported JSON fields are `basePath`, `selections`, `seed`, `totalExams`, `totalStudents`, `heading`, `subheading`, `outputDir`, `examId`, `generatedAt`, and `compilePdf`.
 
 ## Default Course Data
 

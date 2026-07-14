@@ -5,10 +5,13 @@
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
-    "java:build": "bash scripts/build_electron_java.sh",
+    "java:build": "node scripts/build_java.cjs",
+    "java:jar": "node scripts/build_java.cjs --jar",
     "start": "npm run java:build && electron .",
     "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check renderer/app.js",
-    "qa:convert": "node scripts/convert_qa_to_md.cjs"
+    "doctor": "node scripts/doctor.cjs",
+    "qa:convert": "node scripts/convert_qa_to_md.cjs",
+    "test": "npm run check && npm run java:build && node scripts/test_regression.cjs"
   },
   "devDependencies": {
     "electron": "^42.3.2"

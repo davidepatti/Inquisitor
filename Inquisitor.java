@@ -85,7 +85,391 @@ public class Inquisitor {
         }
     }
 
-    public static void main(String[] args) {
+    private static String[] expandConfigArgs(String[] args) throws IOException {
+        Path configPath = null;
+        List<String> passthroughArgs = new ArrayList<>();
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (arg.equalsIgnoreCase("--config")) {
+                if (configPath != null) {
+                    throw new IllegalArgumentException("--config can only be provided once.");
+                }
+                if (i + 1 >= args.length) {
+                    throw new IllegalArgumentException("Config file path missing after --config.");
+                }
+                configPath = Paths.get(args[++i]);
+            } else {
+                passthroughArgs.add(arg);
+            }
+        }
+
+        if (configPath == null) {
+            return args;
+        }
+
+        List<String> expandedArgs = argsFromJsonConfig(configPath);
+        expandedArgs.addAll(passthroughArgs);
+        return expandedArgs.toArray(new String[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> argsFromJsonConfig(Path configPath) throws IOException {
+        Object parsed = parseJson(Files.readString(configPath, StandardCharsets.UTF_8));
+        if (!(parsed instanceof Map)) {
+            throw new IOException("JSON config must be an object: " + configPath);
+        }
+
+        Map<String, Object> config = (Map<String, Object>) parsed;
+        List<String> args = new ArrayList<>();
+
+        addConfigOption(args, config, "--base_path", "basePath", "base_path");
+
+        Object selections = firstConfigValue(config, "selections");
+        if (selections != null) {
+            if (!(selections instanceof List)) {
+                throw new IOException("JSON config field 'selections' must be an array.");
+            }
+            for (Object selection : (List<?>) selections) {
+                if (!(selection instanceof Map)) {
+                    throw new IOException("Each JSON selection must be an object.");
+                }
+                Map<String, Object> selectionMap = (Map<String, Object>) selection;
+                Object count = firstConfigValue(selectionMap, "count");
+                Object fileName = firstConfigValue(selectionMap, "fileName", "file", "path");
+                if (count == null || fileName == null) {
+                    throw new IOException("Each JSON selection requires 'count' and 'fileName'.");
+                }
+                args.add(configValueToString(count, "selection.count"));
+                args.add(configValueToString(fileName, "selection.fileName"));
+            }
+        }
+
+        addConfigOption(args, config, "-t", "totalExams", "total_exams");
+        addConfigOption(args, config, "-st", "totalStudents", "students");
+        addConfigOption(args, config, "-s", "seed");
+        addConfigOption(args, config, "-h", "heading");
+        addConfigOption(args, config, "-h2", "subheading");
+        addConfigOption(args, config, "--output_dir", "outputDir", "output_dir");
+        addConfigOption(args, config, "--exam_id", "examId", "exam_id");
+        addConfigOption(args, config, "--generated_at", "generatedAt", "generated_at");
+        addConfigOption(args, config, "--compile_pdf", "compilePdf", "compile_pdf");
+
+        return args;
+    }
+
+    private static void addConfigOption(List<String> args, Map<String, Object> config, String option, String... keys) throws IOException {
+        Object value = firstConfigValue(config, keys);
+        if (value == null) {
+            return;
+        }
+        args.add(option);
+        args.add(configValueToString(value, keys[0]));
+    }
+
+    private static Object firstConfigValue(Map<String, Object> config, String... keys) {
+        for (String key : keys) {
+            if (config.containsKey(key)) {
+                return config.get(key);
+            }
+        }
+        return null;
+    }
+
+    private static String configValueToString(Object value, String fieldName) throws IOException {
+        if (value == null) {
+            throw new IOException("JSON config field '" + fieldName + "' cannot be null.");
+        }
+        if (value instanceof String || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+        if (value instanceof Long || value instanceof Integer) {
+            return String.valueOf(value);
+        }
+        if (value instanceof Number) {
+            double numericValue = ((Number) value).doubleValue();
+            if (Math.floor(numericValue) == numericValue) {
+                return String.valueOf((long) numericValue);
+            }
+        }
+        throw new IOException("JSON config field '" + fieldName + "' must be a string, boolean, or integer.");
+    }
+
+    private static Object parseJson(String text) throws IOException {
+        return new JsonParser(text).parse();
+    }
+
+    private static final class JsonParser {
+        private final String text;
+        private int index;
+
+        JsonParser(String text) {
+            this.text = text;
+        }
+
+        Object parse() throws IOException {
+            Object value = parseValue();
+            skipWhitespace();
+            if (index != text.length()) {
+                throw error("Unexpected trailing content.");
+            }
+            return value;
+        }
+
+        private Object parseValue() throws IOException {
+            skipWhitespace();
+            if (index >= text.length()) {
+                throw error("Unexpected end of JSON.");
+            }
+
+            char ch = text.charAt(index);
+            if (ch == '{') {
+                return parseObject();
+            }
+            if (ch == '[') {
+                return parseArray();
+            }
+            if (ch == '"') {
+                return parseString();
+            }
+            if (ch == '-' || Character.isDigit(ch)) {
+                return parseNumber();
+            }
+            if (consumeLiteral("true")) {
+                return Boolean.TRUE;
+            }
+            if (consumeLiteral("false")) {
+                return Boolean.FALSE;
+            }
+            if (consumeLiteral("null")) {
+                return null;
+            }
+
+            throw error("Unexpected character '" + ch + "'.");
+        }
+
+        private Map<String, Object> parseObject() throws IOException {
+            expect('{');
+            Map<String, Object> object = new LinkedHashMap<>();
+            skipWhitespace();
+            if (peek('}')) {
+                index++;
+                return object;
+            }
+
+            while (true) {
+                skipWhitespace();
+                if (!peek('"')) {
+                    throw error("Expected object key string.");
+                }
+                String key = parseString();
+                skipWhitespace();
+                expect(':');
+                object.put(key, parseValue());
+                skipWhitespace();
+                if (peek('}')) {
+                    index++;
+                    return object;
+                }
+                expect(',');
+            }
+        }
+
+        private List<Object> parseArray() throws IOException {
+            expect('[');
+            List<Object> array = new ArrayList<>();
+            skipWhitespace();
+            if (peek(']')) {
+                index++;
+                return array;
+            }
+
+            while (true) {
+                array.add(parseValue());
+                skipWhitespace();
+                if (peek(']')) {
+                    index++;
+                    return array;
+                }
+                expect(',');
+            }
+        }
+
+        private String parseString() throws IOException {
+            expect('"');
+            StringBuilder value = new StringBuilder();
+
+            while (index < text.length()) {
+                char ch = text.charAt(index++);
+                if (ch == '"') {
+                    return value.toString();
+                }
+                if (ch != '\\') {
+                    if (ch < 0x20) {
+                        throw error("Unescaped control character in string.");
+                    }
+                    value.append(ch);
+                    continue;
+                }
+
+                if (index >= text.length()) {
+                    throw error("Unexpected end of string escape.");
+                }
+                char escape = text.charAt(index++);
+                switch (escape) {
+                    case '"':
+                    case '\\':
+                    case '/':
+                        value.append(escape);
+                        break;
+                    case 'b':
+                        value.append('\b');
+                        break;
+                    case 'f':
+                        value.append('\f');
+                        break;
+                    case 'n':
+                        value.append('\n');
+                        break;
+                    case 'r':
+                        value.append('\r');
+                        break;
+                    case 't':
+                        value.append('\t');
+                        break;
+                    case 'u':
+                        value.append(parseUnicodeEscape());
+                        break;
+                    default:
+                        throw error("Unsupported string escape '\\" + escape + "'.");
+                }
+            }
+
+            throw error("Unterminated string.");
+        }
+
+        private char parseUnicodeEscape() throws IOException {
+            if (index + 4 > text.length()) {
+                throw error("Incomplete unicode escape.");
+            }
+
+            int value = 0;
+            for (int i = 0; i < 4; i++) {
+                int digit = Character.digit(text.charAt(index++), 16);
+                if (digit < 0) {
+                    throw error("Invalid unicode escape.");
+                }
+                value = (value << 4) + digit;
+            }
+            return (char) value;
+        }
+
+        private Number parseNumber() throws IOException {
+            int start = index;
+            if (peek('-')) {
+                index++;
+            }
+
+            if (index >= text.length()) {
+                throw error("Incomplete number.");
+            }
+
+            if (peek('0')) {
+                index++;
+            } else {
+                if (!Character.isDigit(text.charAt(index))) {
+                    throw error("Invalid number.");
+                }
+                while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                    index++;
+                }
+            }
+
+            boolean floatingPoint = false;
+            if (peek('.')) {
+                floatingPoint = true;
+                index++;
+                if (index >= text.length() || !Character.isDigit(text.charAt(index))) {
+                    throw error("Invalid decimal number.");
+                }
+                while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                    index++;
+                }
+            }
+
+            if (index < text.length() && (text.charAt(index) == 'e' || text.charAt(index) == 'E')) {
+                floatingPoint = true;
+                index++;
+                if (index < text.length() && (text.charAt(index) == '+' || text.charAt(index) == '-')) {
+                    index++;
+                }
+                if (index >= text.length() || !Character.isDigit(text.charAt(index))) {
+                    throw error("Invalid exponent.");
+                }
+                while (index < text.length() && Character.isDigit(text.charAt(index))) {
+                    index++;
+                }
+            }
+
+            String number = text.substring(start, index);
+            try {
+                return floatingPoint ? Double.parseDouble(number) : Long.parseLong(number);
+            } catch (NumberFormatException e) {
+                throw error("Invalid number '" + number + "'.");
+            }
+        }
+
+        private boolean consumeLiteral(String literal) {
+            if (text.startsWith(literal, index)) {
+                index += literal.length();
+                return true;
+            }
+            return false;
+        }
+
+        private boolean peek(char expected) {
+            return index < text.length() && text.charAt(index) == expected;
+        }
+
+        private void expect(char expected) throws IOException {
+            skipWhitespace();
+            if (!peek(expected)) {
+                throw error("Expected '" + expected + "'.");
+            }
+            index++;
+        }
+
+        private void skipWhitespace() {
+            while (index < text.length()) {
+                char ch = text.charAt(index);
+                if (ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t') {
+                    return;
+                }
+                index++;
+            }
+        }
+
+        private IOException error(String message) {
+            return new IOException(message + " At character " + index + ".");
+        }
+    }
+
+    public static void main(String[] originalArgs) {
+        int exitCode = run(originalArgs);
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+    }
+
+    private static int run(String[] originalArgs) {
+        String[] args;
+        try {
+            args = expandConfigArgs(originalArgs);
+        } catch (IOException | IllegalArgumentException e) {
+            System.out.println("Configuration error: " + e.getMessage());
+            return 1;
+        }
+
         // Parse command-line arguments
         List<String> argsList = new ArrayList<>(Arrays.asList(args));
         Long seed = null;
@@ -110,15 +494,15 @@ public class Inquisitor {
                         seed = Long.parseLong(seedStr);
                         if (seed < 0) {
                             System.out.println("Seed value must be a non-negative integer. Found: " + seedStr);
-                            return;
+                            return 1;
                         }
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid seed value: " + seedStr);
-                        return;
+                        return 1;
                     }
                 } else {
                     System.out.println("Seed value missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--total_exams") || arg.equalsIgnoreCase("-t")) {
                 if (iterator.hasNext()) {
@@ -127,15 +511,15 @@ public class Inquisitor {
                         totalExams = Integer.parseInt(totalExamsStr);
                         if (totalExams <= 0) {
                             System.out.println("Total exams must be a positive integer. Found: " + totalExamsStr);
-                            return;
+                            return 1;
                         }
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid total exams value: " + totalExamsStr);
-                        return;
+                        return 1;
                     }
                 } else {
                     System.out.println("Total exams value missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--students") || arg.equalsIgnoreCase("-st")) {
                 if (iterator.hasNext()) {
@@ -144,29 +528,29 @@ public class Inquisitor {
                         totalStudents = Integer.parseInt(totalStudentsStr);
                         if (totalStudents <= 0) {
                             System.out.println("Total students must be a positive integer. Found: " + totalStudentsStr);
-                            return;
+                            return 1;
                         }
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid total students value: " + totalStudentsStr);
-                        return;
+                        return 1;
                     }
                 } else {
                     System.out.println("Total students value missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("-h")) {
                 if (iterator.hasNext()) {
                     heading = iterator.next();
                 } else {
                     System.out.println("Heading string missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("-h2")) {
                 if (iterator.hasNext()) {
                     subheading = iterator.next();
                 } else {
                     System.out.println("Subheading string missing after " + arg);
-                    return;
+                    return 1;
                 }
             }
             else if (arg.equalsIgnoreCase("--base_path") || arg.equalsIgnoreCase("-b")) {
@@ -174,35 +558,35 @@ public class Inquisitor {
                     basePath = iterator.next();
                 } else {
                     System.out.println("Base path string missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--output_dir")) {
                 if (iterator.hasNext()) {
                     outputDir = iterator.next();
                 } else {
                     System.out.println("Output directory string missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--exam_id")) {
                 if (iterator.hasNext()) {
                     examId = iterator.next();
                 } else {
                     System.out.println("Exam id string missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--generated_at")) {
                 if (iterator.hasNext()) {
                     generatedAt = iterator.next();
                 } else {
                     System.out.println("Generation timestamp string missing after " + arg);
-                    return;
+                    return 1;
                 }
             } else if (arg.equalsIgnoreCase("--compile_pdf")) {
                 if (iterator.hasNext()) {
                     compilePdf = Boolean.parseBoolean(iterator.next());
                 } else {
                     System.out.println("Compile PDF value missing after " + arg);
-                    return;
+                    return 1;
                 }
             }
         }
@@ -220,7 +604,8 @@ public class Inquisitor {
                 arg.equalsIgnoreCase("--output_dir") ||
                 arg.equalsIgnoreCase("--exam_id") ||
                 arg.equalsIgnoreCase("--generated_at") ||
-                arg.equalsIgnoreCase("--compile_pdf")) {
+                arg.equalsIgnoreCase("--compile_pdf") ||
+                arg.equalsIgnoreCase("--config")) {
                 i++; // Skip the next argument as it's the value for the flag
             } else {
                 filteredArgs.add(arg);
@@ -229,9 +614,9 @@ public class Inquisitor {
 
         // Now, filteredArgs contains only the question selection arguments
         if (filteredArgs.size() == 0 || filteredArgs.size() % 2 != 0) {
-            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--base_path <path>] [--seed <integer>] [--total_exams <integer>] [--students <integer>]");
+            System.out.println("Usage: java Inquisitor n1 questions_file1 n2 questions_file2 ... [-h <heading>] [-h2 <subheading>] [--base_path <path>] [--seed <integer>] [--total_exams <integer>] [--students <integer>] [--config <file.json>]");
             System.out.println("Example: java Inquisitor 5 questions1.txt 10 questions2.txt -h \"Midterm Exam\" -h2 \"Calculus Section\" --base_path ./questions --seed 1000 --total_exams 3 --students 30");
-            return;
+            return 1;
         }
 
         // Gather command line string for exam ID obfuscation
@@ -267,7 +652,7 @@ public class Inquisitor {
             } catch (IOException e) {
                 System.out.println("Error creating output directory: " + outputFolderPath.toAbsolutePath());
                 e.printStackTrace();
-                return;
+                return 1;
             }
         }
 
@@ -313,7 +698,7 @@ public class Inquisitor {
         // Check if any exams were generated
         if (examDataList.isEmpty()) {
             System.out.println("No exams were generated. Exiting.");
-            return;
+            return 1;
         }
 
         // Determine T (number of questions) based on the first exam
@@ -351,10 +736,12 @@ public class Inquisitor {
                     examDataList
             );
             System.out.println("Generated " + examInstanceFileName + " successfully.");
+            return 0;
 
         } catch (IOException e) {
             System.out.println("Error writing generator output.");
             e.printStackTrace();
+            return 1;
         }
     }
 
