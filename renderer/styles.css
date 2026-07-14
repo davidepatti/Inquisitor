@@ -139,8 +139,9 @@ button:disabled {
 }
 
 .header-section-body {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
   gap: 10px;
   min-width: 0;
   width: 100%;
@@ -196,6 +197,7 @@ select:focus {
 
 .header-actions {
   align-items: end;
+  justify-content: flex-end;
   flex-wrap: nowrap;
 }
 
@@ -662,10 +664,6 @@ svg {
     align-items: start;
   }
 
-  .header-section-body {
-    flex-wrap: wrap;
-  }
-
   .header-actions {
     flex-wrap: wrap;
   }
@@ -711,11 +709,6 @@ svg {
 
   .header-actions {
     align-items: stretch;
-  }
-
-  .header-section-body {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .header-actions .button {
